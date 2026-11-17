@@ -359,3 +359,10 @@
   min-height:44px;
   padding:8px 4px 8px 12px;
 }
+
+/* Icon-only game-settings action also needs a 44px horizontal hit area. */
+.pm-app .gw-library-list .pm-library-card-actions .pm-button-secondary {
+  min-width:44px;
+  min-height:44px;
+  justify-content:center;
+}
