@@ -52,6 +52,7 @@ export function UnifiedLibrary(props:Props){
  const [warnings,setWarnings]=useState<string[]>([]);
  const [loaded,setLoaded]=useState(false);const [error,setError]=useState('');const [retry,setRetry]=useState(0);
  const [favorites,setFavorites]=useState(()=>{try{return readFavorites();}catch{return new Set<string>();}});
+ const [selectedItemKey,setSelectedItemKey]=useState<string|null>(null);
  const [favoriteError,setFavoriteError]=useState(()=>{try{readFavorites();return '';}catch{return 'Saved favorites could not be read. They have been left unchanged.';}});
  useEffect(()=>{
   const change=()=>setWindowVisible(!document.hidden);
@@ -93,6 +94,7 @@ export function UnifiedLibrary(props:Props){
  useEffect(()=>{
   if((loaded||props.source==='steam')&&visible.length===0&&props.page)props.onPageChange?.(0);
  },[loaded,props.source,visible.length,props.page,props.onPageChange]);
+ const selectedItem=visible.find(item=>item.key===selectedItemKey)??visible[0]??null;
  const recent=useMemo(()=>visible.filter(item=>item.recent>0).sort((a,b)=>b.recent-a.recent||a.key.localeCompare(b.key)).slice(0,3),[visible]);
  const openItem=(item:Item)=>item.kind==='steam'?props.onSteam(item.game):props.onWindows(item.game);
  const sourceName=(item:Item)=>item.kind==='steam'?'Steam':'Windows';
@@ -128,15 +130,17 @@ export function UnifiedLibrary(props:Props){
   {launchError&&<p role="alert" className="pm-repair-danger">{launchError}</p>}
   {launchGame&&<section ref={launchPanel} tabIndex={-1} className="pm-section pm-library-launch" aria-label={`Launch ${launchGame.name}`}><div className="pm-section-heading"><h2>Launch {launchGame.name}</h2><button className="pm-button pm-button-secondary" aria-label="Close launch options" disabled={steamLaunching} onClick={()=>setLaunchGame(null)}><X size={18}/></button></div><LaunchTest key={steamLibraryKey(launchGame)} game={launchGame} onBusyChange={setSteamLaunching}/></section>}
   {props.sort==='recent'&&<p className="pm-library-note">Uses available Steam last-played dates and recorded Windows game launches. Unknown dates appear last.</p>}
+  <div className="gw-library-layout">
+   <div className="gw-library-list">
   <section className="pm-library-grid-section" aria-label="Unified game library">
    {!loaded&&!error&&props.source!=='steam'&&<p role="status">Loading Windows games…</p>}
    {props.steamLoading&&!props.scanAvailable&&props.source!=='windows'&&<p role="status">Loading Steam games…</p>}
    {visible.length?<PagedList page={props.page} onPageChange={props.onPageChange} clampPage={loaded||props.source==='steam'} className="pm-library-grid" key={`${props.query}:${props.filter}:${props.source}:${props.sort}`} items={visible} render={item=>{
     const source=sourceName(item);const favorite=favorites.has(item.key);
-    return <article className="pm-library-card" key={item.key}>
+    return <article className={'pm-library-card'+(selectedItem?.key===item.key?' gw-selected':'')} key={item.key}>
      <GameCover name={item.name} source={{source:item.kind,id:item.kind==='steam'?item.game.appId:item.game.id,libraryPath:item.kind==='steam'?item.game.libraryPath:null}} onOpen={()=>openItem(item)}/>
      <div className="pm-library-card-body">
-      <strong className="pm-library-card-title">{item.name}</strong>
+      <button type="button" className="pm-library-card-title gw-library-select" aria-label={`Select ${item.name} (${source})`} aria-pressed={selectedItem?.key===item.key} onClick={()=>setSelectedItemKey(item.key)}>{item.name}</button>
       <div className="pm-library-card-meta"><span>{source} · {runtimeName(item)}</span>{props.sort==='recent'&&<small>{item.recent?`${item.kind==='steam'?'Last played':'Last launched'} ${new Date(item.recent).toLocaleDateString()}`:'Date unknown'}</small>}</div>
       <div className="pm-library-card-status">{item.kind==='steam'?props.steamStatus(item.game):<span className={`pm-tag ${needsReview(item.game)?'warning':'neutral'}`}>{windowsStatus(item.game)}</span>}</div>
       <div className="pm-library-card-actions">
@@ -149,5 +153,65 @@ export function UnifiedLibrary(props:Props){
    }}/>:(loaded||props.source==='steam')&&(!props.steamLoading||props.scanAvailable||props.source==='windows')&&<div className="pm-empty"><strong>No matching games</strong><p>Change your search or filters, scan Steam again, or add a game from Windows Games.</p></div>}
   </section>
   {recent.length>0&&<section className="pm-section pm-library-recent" aria-label="Recently played"><div className="pm-section-heading"><h2>Recently played</h2><button className="pm-button pm-button-secondary" onClick={()=>props.onSort('recent')}>View all<ArrowRight size={16}/></button></div><div className="pm-library-recent-list">{recent.map(item=><div key={item.key} className="pm-library-recent-row"><GameIcon source={iconSource(item)}/><div className="pm-game-title"><strong>{item.name}</strong><small>{sourceName(item)} · {runtimeName(item)}</small></div><time dateTime={new Date(item.recent).toISOString()}>{new Date(item.recent).toLocaleDateString()}</time><button className="pm-button pm-button-secondary" aria-label={`View recent ${item.name} (${sourceName(item)})`} onClick={()=>openItem(item)}><ArrowRight size={17}/></button></div>)}</div></section>}
+   </div>
+   {selectedItem&&(()=>{
+     const item=selectedItem;
+     const source=sourceName(item);
+     const favorite=favorites.has(item.key);
+     const status=item.kind==='steam'
+       ?(item.game.installPathExists?'Game files located':'Installation folder missing')
+       :windowsStatus(item.game);
+     const ready=!cannotPlay(item);
+     return <aside className="gw-library-detail" aria-label={`Selected game: ${item.name}`}>
+       <div className="gw-library-feature">
+         <GameCover name={item.name}
+           source={{source:item.kind,id:item.kind==='steam'?item.game.appId:item.game.id,libraryPath:item.kind==='steam'?item.game.libraryPath:null}}
+           onOpen={()=>openItem(item)}/>
+       </div>
+       <div className="gw-library-detail-content">
+         <div className="gw-library-detail-heading">
+           <div><h2>{item.name}</h2><p>{source} game</p></div>
+           <button type="button" className="pm-favorite"
+             aria-pressed={favorite}
+             aria-label={`${favorite?'Remove':'Add'} selected game ${favorite?'from':'to'} favorites`}
+             onClick={()=>toggleFavorite(item.key)}><Star size={19} fill={favorite?'currentColor':'none'}/></button>
+         </div>
+         <div className="gw-library-play-row">
+           <button className="pm-button pm-button-primary" type="button"
+             aria-label={`Play selected ${item.name}`}
+             disabled={!ready} onClick={()=>void play(item)}>
+             <Play size={19}/>{launching===item.key?'Launching…':'Play'}
+           </button>
+           <div className="gw-library-runtime" title={runtimeName(item)}>
+             <strong>{status}</strong><span>{runtimeName(item)}</span>
+           </div>
+         </div>
+         <div className="gw-library-actions">
+           <button type="button" className="gw-library-action" onClick={()=>openItem(item)}>
+             <span><strong>Configure Game</strong><small>Proton, launch options and game settings</small></span><ArrowRight size={18}/>
+           </button>
+           <button type="button" className="gw-library-action" onClick={()=>openItem(item)}>
+             <span><strong>Diagnose &amp; Repair</strong><small>Review logs and supported repair options</small></span><ArrowRight size={18}/>
+           </button>
+           <button type="button" className="gw-library-action" onClick={()=>openItem(item)}>
+             <span><strong>Backups &amp; Rollback</strong><small>Manage game data and restore points</small></span><ArrowRight size={18}/>
+           </button>
+         </div>
+         <div className="gw-library-facts">
+           <div><span>Source</span><strong>{source}</strong></div>
+           <div><span>Runtime</span><strong>{runtimeName(item)}</strong></div>
+         </div>
+         <div className="gw-library-activity">
+           <div className="gw-library-activity-title"><strong>Recent Activity</strong>
+             <button type="button" onClick={()=>openItem(item)}>View Details <ArrowRight size={14}/></button></div>
+           {item.recent>0?<div className="gw-library-activity-line">
+             <span>{item.kind==='steam'?'Last played':'Last launched'}</span>
+             <time dateTime={new Date(item.recent).toISOString()}>{new Date(item.recent).toLocaleString()}</time>
+           </div>:<p>Launch history is not available for this game yet.</p>}
+         </div>
+       </div>
+     </aside>;
+   })()}
+  </div>
  </>;
 }
