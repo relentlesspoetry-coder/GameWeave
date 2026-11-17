@@ -25,6 +25,7 @@ import { GameDetailTabs } from './GameDetailTabs';
 import { GameIcon } from './GameIcon';
 import { LaunchTest } from './LaunchTest';
 import { AppearanceSettings } from './gameweave/AppearanceSettings';
+import { GameweaveBrand } from './gameweave/GameweaveBrand';
 import { readAppearance, saveAppearance, type Appearance } from './gameweave/appearance';
 
 type AppError = { source: 'diagnostics' | 'scan' | 'advisor' | 'vulkan'; message: string };
@@ -200,7 +201,7 @@ export default function App() {
 
   return <div className="pm-app" data-gw-theme={appearance.theme} data-gw-glass={appearance.glass} data-gw-motion={appearance.reduceMotion ? 'reduced' : 'full'}>
     <aside className="pm-sidebar">
-      <div className="pm-brand"><div className="gw-brand" aria-label="Gameweave"><span className="gw-brand-mark" aria-hidden="true">GW</span><strong>GAMEWEAVE</strong><small>Linux Gaming Hub</small></div></div>
+      <div className="pm-brand"><GameweaveBrand theme={appearance.theme}/></div>
       <nav aria-label="Main navigation" className="pm-nav">
         <div className="pm-nav-group">{(['games', 'windows', 'tools', 'settings'] as Page[]).map(id => {
           const { label, icon: Icon } = MENU.find(item => item.page === id)!;

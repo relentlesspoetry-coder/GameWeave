@@ -366,3 +366,13 @@
   min-height:44px;
   justify-content:center;
 }
+
+/* Supplied theme logos are loaded from /public/branding; keep fallback visible until ready. */
+.gw-brand-logo {
+  display:block;
+  width:min(100%,204px);
+  height:auto;
+  max-height:78px;
+  object-fit:contain;
+}
+.gw-brand-logo[hidden] {display:none;}

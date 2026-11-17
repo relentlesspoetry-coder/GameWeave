@@ -27,3 +27,19 @@ update endpoints, release metadata or user data.
 
 All new visuals are separated from existing game-management operations;
 the eventual package rename and updater migration require independent review.
+
+## Original logo assets
+
+The four original user-supplied logos are retained in
+`gameweave-brand-assets.zip` (the design asset handoff, outside this
+repository). Install its `public/branding/` directory at the root of this
+branch before merging or publishing the rebrand.
+
+`GameweaveBrand` maps each theme to
+`/branding/{carbon-green|cyan-purple|red-orange-gold|teal-green-gold}.webp`
+and falls back to a text mark if the image is missing or fails to load.
+The fallback is deliberate, but is **not a substitute for the approved
+production logos**.
+
+Do not merge Phase 1 or produce a branded release until these four image
+assets are checked into the repository and their rendering verified.
