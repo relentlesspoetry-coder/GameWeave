@@ -166,7 +166,7 @@ export function UnifiedLibrary(props:Props){
        <div className="gw-library-feature">
          <GameCover name={item.name}
            source={{source:item.kind,id:item.kind==='steam'?item.game.appId:item.game.id,libraryPath:item.kind==='steam'?item.game.libraryPath:null}}
-           onOpen={()=>openItem(item)}/>
+           readOnly onOpen={()=>openItem(item)}/>
        </div>
        <div className="gw-library-detail-content">
          <div className="gw-library-detail-heading">
@@ -205,7 +205,7 @@ export function UnifiedLibrary(props:Props){
            <div className="gw-library-activity-title"><strong>Recent Activity</strong>
              <button type="button" onClick={()=>openItem(item)}>View Details <ArrowRight size={14}/></button></div>
            {item.recent>0?<div className="gw-library-activity-line">
-             <span>{item.kind==='steam'?'Last played':'Last launched'}</span>
+             <span>Last activity</span>
              <time dateTime={new Date(item.recent).toISOString()}>{new Date(item.recent).toLocaleString()}</time>
            </div>:<p>Launch history is not available for this game yet.</p>}
          </div>
