@@ -21,7 +21,8 @@ it('clears failed diagnostics after a successful Check Logs & System retry',asyn
  });
  render(<App/>);
  await screen.findByText('Games were found, but logs could not be analyzed: Error: temporary fixture failure');
- fireEvent.click(screen.getByRole('button',{name:'System Check',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:'Tools',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:/^System Check/}));
  fireEvent.click(screen.getByRole('button',{name:'Check Logs & System'}));
  await screen.findByText('Recovered fixture OS');
  expect(count).toBe(2);
@@ -70,7 +71,8 @@ it('preserves a newer advisor error when diagnostics retry succeeds',async()=>{
  });
  render(<App/>);
  await screen.findByText('Games were found, but logs could not be analyzed: Error: temporary diagnostics failure');
- fireEvent.click(screen.getByRole('button',{name:'System Check',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:'Tools',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:/^System Check/}));
  fireEvent.click(screen.getByRole('button',{name:'Check Logs & System'}));
  await waitFor(()=>expect(count).toBe(2));
  rejectAdvice(new Error('advisor fixture failure'));
