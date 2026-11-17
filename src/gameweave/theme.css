@@ -339,3 +339,23 @@
   .pm-app .gw-library-list .pm-cover-change,
   .pm-app .gw-library-feature .pm-cover-change {opacity:1;}
 }
+
+
+/* Steam Deck/touch: all clickable Library controls need a >=44px hit target. */
+.pm-app .gw-library-list .pm-cover-change {
+  min-height:44px;
+  padding:8px 12px;
+}
+.pm-app .gw-library-list .pm-library-card-actions .pm-favorite {
+  width:44px;
+  min-height:44px;
+}
+.pm-app .gw-library-list .pm-library-card-title.gw-library-select {
+  min-height:44px;
+  display:flex;
+  align-items:center;
+}
+.pm-app .gw-library-activity-title button {
+  min-height:44px;
+  padding:8px 4px 8px 12px;
+}
