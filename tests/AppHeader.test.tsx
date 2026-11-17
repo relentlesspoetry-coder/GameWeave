@@ -28,7 +28,7 @@ it('shows the installed version and keeps a header update check alive across nav
   await waitFor(() => expect(check).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole('button', {name: 'Settings', exact: true}));
   expect((screen.getByRole('button', {name: 'Check for updates'}) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.click(screen.getByRole('button', {name: 'Home', exact: true}));
+  fireEvent.click(screen.getByRole('button', {name: 'Library', exact: true}));
   finish(null);
   await screen.findByText('You are up to date.');
   expect(screen.getAllByRole('button', {name: 'Check for updates'})).toHaveLength(1);
@@ -38,20 +38,25 @@ it('places automatic fix controls before privacy and technical sections in Setti
  render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Settings',exact:true}));
  const monitor=screen.getByRole('region',{name:'Automatic game log reader'});
  expect(monitor.compareDocumentPosition(screen.getByText('Privacy & safety')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
- expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+ expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+ expect(screen.getByRole('checkbox',{name:/Reduce motion/})).toBeTruthy();
 });
 
 it('opens the library by default and keeps every tool reachable', async () => {
  render(<App/>);
- expect(screen.getByRole('heading', {name:'My Games',level:1})).toBeTruthy();
+ expect(screen.getByRole('heading', {name:'My Library',level:1})).toBeTruthy();
  expect(screen.getByRole('button', {name:'Library',exact:true}).getAttribute('aria-current')).toBe('page');
  await screen.findByRole('button', {name:'Add game',exact:true});
  fireEvent.click(screen.getByRole('button', {name:'Add game',exact:true}));
  expect(await screen.findByRole('heading', {name:'Windows Games',level:1})).toBeTruthy();
  fireEvent.click(screen.getByRole('button', {name:'Library',exact:true}));
- expect(screen.getByRole('heading', {name:'My Games',level:1})).toBeTruthy();
- for(const label of ['Home','Windows Games','Proton versions','Diagnostics','System Check','Settings']) {
+ expect(screen.getByRole('heading', {name:'My Library',level:1})).toBeTruthy();
+ for(const label of ['Library','Install','Tools','Settings']) {
   expect(screen.getByRole('button', {name:label,exact:true})).toBeTruthy();
+ }
+ fireEvent.click(screen.getByRole('button',{name:'Tools',exact:true}));
+ for(const label of ['Proton Manager','Diagnostics & Repairs','System Check']){
+  expect(screen.getByRole('button',{name:new RegExp('^'+label)})).toBeTruthy();
  }
 });
 
