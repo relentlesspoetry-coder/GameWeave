@@ -115,3 +115,16 @@
   animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 @media(forced-colors:active){.gw-theme-tile.selected,.gw-tool-link:hover {
   border:2px solid Highlight;}}
+
+
+/* Keep the wordmark inside the collapsed Steam Deck sidebar. */
+@media(max-width:760px) and (min-width:541px) {
+  .pm-app .gw-brand-mark {font-size:25px;letter-spacing:-5px;padding-right:5px;}
+  .pm-app .gw-brand strong,.pm-app .gw-brand small {display:none;}
+}
+@media(max-width:540px) {
+  .pm-app .pm-nav {grid-template-columns:repeat(4,minmax(0,1fr));}
+  .pm-app .gw-brand strong {font-size:18px;}
+  .pm-app .gw-brand small {font-size:11px;}
+  .pm-app .pm-nav-link {font-size:11px;min-width:0;}
+}
