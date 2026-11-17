@@ -24,11 +24,12 @@ import { PagedList } from './PagedList';
 import { GameDetailTabs } from './GameDetailTabs';
 import { GameIcon } from './GameIcon';
 import { LaunchTest } from './LaunchTest';
-import programLogo from './assets/proton-medic-logo.webp';
+import { AppearanceSettings } from './gameweave/AppearanceSettings';
+import { readAppearance, saveAppearance, type Appearance } from './gameweave/appearance';
 
 type AppError = { source: 'diagnostics' | 'scan' | 'advisor' | 'vulkan'; message: string };
 
-type Page = 'protons' | 'windows' | 'home' | 'games' | 'fixes' | 'system' | 'settings';
+type Page = 'protons' | 'windows' | 'home' | 'games' | 'fixes' | 'system' | 'settings' | 'tools';
 const MENU: { page: Page; label: string; icon: typeof Home }[] = [
   { page: 'home', label: 'Home', icon: Home },
   { page: 'games', label: 'My Games', icon: Gamepad2 },
@@ -37,6 +38,7 @@ const MENU: { page: Page; label: string; icon: typeof Home }[] = [
   { page: 'fixes', label: 'Fixes', icon: Wrench },
   { page: 'system', label: 'System Check', icon: Monitor },
   { page: 'settings', label: 'Settings', icon: Settings2 },
+  { page: 'tools', label: 'Tools', icon: Wrench },
 ];
 const gameKey = (g: { libraryPath: string; appId: string }) => `${g.libraryPath}:${g.appId}`;
 
@@ -57,6 +59,12 @@ function StatusTag({ label, tone }: { label: string; tone: 'error' | 'warning' |
 
 export default function App() {
   const [page, setPage] = useState<Page>('games');
+  const [appearance, setAppearance] = useState<Appearance>(readAppearance);
+  const [appearanceError, setAppearanceError] = useState('');
+  const changeAppearance = (next: Appearance) => {
+    setAppearance(next);
+    setAppearanceError(saveAppearance(next) ? '' : 'Appearance could not be saved. It will reset after restarting.');
+  };
   const [scan, setScan] = useState<ScanReport | null>(null);
   const [report, setReport] = useState<DiagnosticsReport | null>(null);
   const [advice, setAdvice] = useState<AdvisorReport | null>(null);
@@ -190,22 +198,24 @@ export default function App() {
   const showAllGames = () => { setLibraryPage(0); setSelectedWindowsId(undefined); setLibrarySource('all'); setSelectedKey(null); setQuery(''); setFilter('all'); setPage('games'); };
   const status = !scan ? 'Not scanned' : scan.installations.length ? 'Steam detected' : 'Steam not found';
 
-  return <div className="pm-app">
+  return <div className="pm-app" data-gw-theme={appearance.theme} data-gw-glass={appearance.glass} data-gw-motion={appearance.reduceMotion ? 'reduced' : 'full'}>
     <aside className="pm-sidebar">
-      <div className="pm-brand"><img className="pm-brand-logo" src={programLogo} alt="Proton Medic" width={768} height={512}/></div>
+      <div className="pm-brand"><div className="gw-brand" aria-label="Gameweave"><span className="gw-brand-mark" aria-hidden="true">GW</span><strong>GAMEWEAVE</strong><small>Linux Gaming Hub</small></div></div>
       <nav aria-label="Main navigation" className="pm-nav">
-        <div className="pm-nav-group">{(['games', 'protons', 'fixes', 'settings'] as Page[]).map(id => {
+        <div className="pm-nav-group">{(['games', 'windows', 'tools', 'settings'] as Page[]).map(id => {
           const { label, icon: Icon } = MENU.find(item => item.page === id)!;
-          return <button className={`pm-nav-link ${page === id ? 'active' : ''}`} aria-label={id === 'games' ? 'Library' : id === 'fixes' ? 'Diagnostics' : label} aria-current={page === id ? 'page' : undefined} type="button" key={id} onClick={() => { if (id === 'games') { setSelectedKey(null); setSelectedWindowsId(undefined); } setPage(id); }}><Icon size={21}/><span>{id === 'games' ? 'Library' : id === 'fixes' ? 'Diagnostics' : label}</span></button>;
-        })}</div>
-        <div className="pm-nav-group pm-nav-secondary">{(['home', 'windows', 'system'] as Page[]).map(id => {
-          const { label, icon: Icon } = MENU.find(item => item.page === id)!;
-          return <button className={`pm-nav-link ${page === id ? 'active' : ''}`} aria-current={page === id ? 'page' : undefined} type="button" key={id} onClick={() => setPage(id)}><Icon size={18}/><span>{label}</span></button>;
+          const active = page === id || (id === 'tools' && (page === 'protons' || page === 'fixes' || page === 'system'));
+          return <button className={active ? 'pm-nav-link active' : 'pm-nav-link'}
+            aria-label={id === 'games' ? 'Library' : id === 'windows' ? 'Install' : label}
+            aria-current={active ? 'page' : undefined} type="button" key={id}
+            onClick={() => { if (id === 'games') { setSelectedKey(null); setSelectedWindowsId(undefined); } setPage(id); }}>
+            <Icon size={21}/><span>{id === 'games' ? 'Library' : id === 'windows' ? 'Install' : label}</span>
+          </button>;
         })}</div>
       </nav>
     </aside>
     <main className="pm-main">
-      <div className="pm-workspace-header">{page === 'games' && !selectedGame && !selectedWindowsId ? <h1>My Games</h1> : <span aria-hidden="true"/>}<AppUpdater/></div>
+      <div className="pm-workspace-header">{page === 'games' && !selectedGame && !selectedWindowsId ? <h1>My Library</h1> : <span aria-hidden="true"/>}<AppUpdater/></div>
       <ActiveFixSessions/>
       {error && <div className="pm-error" role="alert"><AlertTriangle size={18}/><p>{error.message}</p><button type="button" onClick={() => setError(null)} aria-label="Dismiss error"><X size={17}/></button></div>}
       {page === 'home' && <>
@@ -228,13 +238,22 @@ export default function App() {
 
       </>}
 
+      {page === 'tools' && <>
+        <div className="pm-page-title"><div><h1>Tools</h1><p>Manage Proton, diagnose issues, and inspect your system.</p></div></div>
+        <section className="gw-tool-grid" aria-label="Tool categories">
+          <button className="gw-tool-link" type="button" onClick={() => setPage('protons')}><Layers size={25}/><span><strong>Proton Manager</strong><small>Manage installed runtimes and verified downloads.</small></span></button>
+          <button className="gw-tool-link" type="button" onClick={() => setPage('fixes')}><Wrench size={25}/><span><strong>Diagnostics &amp; Repairs</strong><small>Review findings and supported, recoverable fixes.</small></span></button>
+          <button className="gw-tool-link" type="button" onClick={() => setPage('system')}><Monitor size={25}/><span><strong>System Check</strong><small>Inspect graphics, Vulkan and runtime tools.</small></span></button>
+        </section>
+      </>}
+      {(page === 'protons' || page === 'fixes' || page === 'system') && <button type="button" className="pm-back" onClick={() => setPage('tools')}><ArrowLeft size={17}/> Back to Tools</button>}
       {page === 'windows' && <WindowsGames/>}
       {page === 'games' && <>
 
         {selectedWindowsId ? <WindowsGames selectedId={selectedWindowsId} onBack={()=>setSelectedWindowsId(undefined)}/> : selectedGame ? <div className="pm-detail-view"><div className="pm-detail-toolbar"><button className="pm-back" onClick={() => setSelectedKey(null)}><ArrowLeft size={17}/> Back to My Games</button><button className="pm-button pm-button-secondary" disabled={loading} onClick={() => void scanGames()}><RefreshCw size={16} className={loading ? 'pm-spin' : ''}/>{loading ? 'Scanning...' : 'Scan Again'}</button></div><div className="pm-selected-head"><GameIcon className="big" source={{ kind: 'steam', appId: selectedGame.appId, libraryPath: selectedGame.libraryPath }}/><div><h1>{selectedGame.name}</h1><span className="pm-game-subtitle">Steam App {selectedGame.appId}</span><div className="pm-detail-status"><StatusTag {...getIssue(selectedGame, selectedDiagnosis ?? undefined)}/></div><p>{getIssue(selectedGame, selectedDiagnosis ?? undefined).note}</p></div></div>
           <GameDetailTabs key={gameKey(selectedGame)} tabs={[
             { id: 'diagnostics', label: 'Diagnostics', content: <>
-          <div className="pm-section"><div className="pm-section-heading"><div><h2>What Proton Medic Found</h2><p>Existing logs are checked without changing your game.</p></div><button className="pm-subtle-button" disabled={analyzing} onClick={() => void analyzeLogs()}><RefreshCw size={16} className={analyzing ? 'pm-spin' : ''}/>{analyzing ? 'Checking...' : 'Analyze Again'}</button></div>
+          <div className="pm-section"><div className="pm-section-heading"><div><h2>What Gameweave Found</h2><p>Existing logs are checked without changing your game.</p></div><button className="pm-subtle-button" disabled={analyzing} onClick={() => void analyzeLogs()}><RefreshCw size={16} className={analyzing ? 'pm-spin' : ''}/>{analyzing ? 'Checking...' : 'Analyze Again'}</button></div>
             {!selectedGame.installPathExists && <div className="pm-callout"><AlertTriangle size={18}/> Game install folder is missing. Check the Steam installation or mount the drive.</div>}
             <GameDiagnosis result={selectedDiagnosis}/>
           </div>
@@ -271,7 +290,10 @@ export default function App() {
           {vulkan && <div className="pm-probe"><StatusTag tone={vulkan.status === 'available' ? 'ok' : 'warning'} label={vulkan.status === 'available' ? 'Vulkan probe succeeded' : `Vulkan: ${vulkan.status}`}/><p>{vulkan.detail}</p><details><summary>Technical output</summary><pre>{vulkan.output || 'No output returned.'}</pre></details></div>}
         </section><details className="pm-section pm-technical"><summary>Advanced system details <ChevronDown size={17}/></summary>{report && <div className="pm-system-advanced"><h3>Graphics devices</h3>{report.system.gpuDevices.map((g,i) => <pre key={i}>{g}</pre>)}<h3>Vulkan ICD files</h3>{report.system.icdManifests.map((v,i) => <pre key={i}>{v}</pre>)}{report.system.notes.map((n,i) => <p key={i}>{n}</p>)}</div>}</details></>}
 
-      {page === 'settings' && <div className="pm-page-title"><div><h1>Settings</h1><p>Manage automatic fixes and privacy.</p></div></div>}
+      {page === 'settings' && <>
+        <div className="pm-page-title"><div><h1>Settings</h1><p>Appearance, automatic fixes, and privacy.</p></div></div>
+        <AppearanceSettings value={appearance} onChange={changeAppearance} saveError={appearanceError}/>
+      </>}
       {page === 'settings' && (autoControl.message || autoMessage) && <p className="pm-auto-message" role="status">{autoControl.message || autoMessage?.message}</p>}
       <AutoLogMonitor enabled={autoControl.enabled} controlPending={autoControl.pending} onToggle={enabled => void autoControl.toggle(enabled)} expanded={page === 'settings'}/>
       {page === 'settings' && <><SupportReport/><section className="pm-section"><div className="pm-section-heading"><div><h2>Privacy & safety</h2><p>Game scans and logs stay on this computer.</p></div><ShieldCheck size={23} className="pm-green"/></div><div className="pm-safety-grid"><div><ShieldCheck size={20}/><h3>Private scans</h3><p>Diagnostics stay local, with no telemetry or administrator access.</p></div><div><HardDrive size={20}/><h3>Recoverable repairs</h3><p>Approved repairs archive data on the same library drive. Close Steam before repairing or restoring.</p></div><div><Download size={20}/><h3>Verified updates</h3><p>Update checks contact GitHub. Missing Steam covers are requested from Steam using the game’s app ID. Custom covers stay local.</p></div></div></section>
