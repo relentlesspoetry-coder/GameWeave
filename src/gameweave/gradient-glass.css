@@ -1,26 +1,50 @@
-/* Gameweave's flat glass controls. The first hue lights the surface;
-   the second hue draws the edge and marks the current choice. */
+/* Graphite canvas, tapered light ribbons, and edge-lit desktop glass.
+   The first hue tints the glass; the second illuminates the polished edge. */
 .pm-app {
   --gw-gradient-start:#0a281c;
   --gw-gradient-end:#202b0e;
-  --gw-glass-panel:linear-gradient(135deg,rgba(var(--gw-rgb),.115),rgba(var(--gw-tail-rgb),.09)),rgba(7,13,17,.78);
-  --gw-glass-fill:linear-gradient(125deg,rgba(var(--gw-rgb),.15),rgba(var(--gw-rgb),.045) 43%,rgba(var(--gw-tail-rgb),.12)),rgba(9,16,22,.43);
-  --gw-glass-active:linear-gradient(120deg,rgba(var(--gw-rgb),.34),rgba(var(--gw-tail-rgb),.23)),rgba(9,16,22,.54);
-  --gw-radius:7px;
+  --gw-glass-panel:linear-gradient(145deg,rgba(var(--gw-rgb),.075),transparent 38%,rgba(var(--gw-tail-rgb),.055)),rgba(6,12,15,.77);
+  --gw-glass-fill:
+    radial-gradient(ellipse 106% 152% at 1% -126%,#f0ffffb5 61%,#d7fff00b 71%,transparent 76%),
+    linear-gradient(168deg,#f2ffff24,transparent 34%),
+    linear-gradient(124deg,rgba(var(--gw-rgb),.19),transparent 51%,rgba(var(--gw-tail-rgb),.11)),
+    rgba(8,16,19,.51);
+  --gw-glass-active:
+    radial-gradient(ellipse 110% 169% at 3% -141%,#ffffff 62%,#e4fff523 69%,transparent 74%),
+    linear-gradient(180deg,rgba(var(--gw-rgb),.60),rgba(var(--gw-rgb),.13) 40%,transparent 71%,rgba(var(--gw-tail-rgb),.47)),
+    linear-gradient(114deg,rgba(var(--gw-rgb),.18),rgba(var(--gw-tail-rgb),.24)),
+    rgba(5,13,14,.79);
+  --gw-radius:8px;
+  position:relative;isolation:isolate;
   --pm-accent:var(--gw-secondary);
   background:
-    radial-gradient(ellipse at 23% 4%,rgba(var(--gw-rgb),.24),transparent 55%),
-    radial-gradient(ellipse at 100% 85%,rgba(var(--gw-tail-rgb),.14),transparent 65%),
-    linear-gradient(132deg,#080c12,var(--gw-gradient-start) 48%,var(--gw-gradient-end));
+    radial-gradient(ellipse at 92% 2%,rgba(var(--gw-rgb),.075),transparent 49%),
+    radial-gradient(ellipse at 12% 93%,rgba(var(--gw-tail-rgb),.055),transparent 53%),
+    linear-gradient(132deg,#111617,#080d0f 47%,#0a1011);
 }
 .pm-app[data-gw-theme="cyan-purple"] { --gw-gradient-start:#12264b; --gw-gradient-end:#2d1945; }
 .pm-app[data-gw-theme="red-orange-gold"] { --gw-gradient-start:#3c1722; --gw-gradient-end:#382012; }
 .pm-app[data-gw-theme="teal-green-gold"] { --gw-gradient-start:#0a3035; --gw-gradient-end:#123623; }
 
 .pm-app .pm-sidebar {
-  background:linear-gradient(142deg,rgba(var(--gw-rgb),.15),rgba(6,11,16,.81) 53%,rgba(var(--gw-tail-rgb),.15)),rgba(8,12,17,.63);
+  background:linear-gradient(142deg,#11191b,#060d0f 50%,#0a1315);
+  border-right-color:#d1e3e126;
 }
-.pm-app .pm-sidebar::before { opacity:.40; }
+.pm-app .pm-sidebar::before { display:none; }
+.gw-glass-ribbon { pointer-events:none; position:absolute; inset:0 0 auto; width:100%; }
+.gw-glass-ribbon-rail { height:100%; z-index:-1; }
+.gw-glass-ribbon-workspace { height:min(490px,61vh); z-index:-1; opacity:.40; }
+.gw-ribbon-core,.gw-ribbon-fill { --gw-ribbon-spectrum:url(#gw-spectrum-workspace); }
+.gw-glass-ribbon-rail :is(.gw-ribbon-core,.gw-ribbon-fill) { --gw-ribbon-spectrum:url(#gw-spectrum-rail); }
+.gw-ribbon-core {
+  fill:none;stroke:var(--gw-ribbon-spectrum);stroke-width:1.45px;
+  filter:drop-shadow(0 0 4px var(--gw-accent)) drop-shadow(0 0 16px var(--gw-accent));
+}
+.gw-ribbon-fill { fill:var(--gw-ribbon-spectrum); opacity:.17; }
+@media(max-width:540px) {
+  .gw-glass-ribbon-rail { display:none; }
+  .gw-glass-ribbon-workspace { opacity:.23; }
+}
 .pm-app .gw-system-card { background:var(--gw-glass-panel); }
 .pm-app .gw-library-layout .pm-library-card,
 .pm-app .gw-tools-card,
@@ -30,15 +54,15 @@
   background:var(--gw-glass-panel);
 }
 .pm-app .gw-library-layout .pm-library-card.gw-selected {
-  border-color:rgba(var(--gw-tail-rgb),.78);
-  box-shadow:inset 0 1px rgba(255,255,255,.10);
+  border-color:var(--gw-secondary);
+  box-shadow:0 0 0 1px var(--gw-secondary),0 0 12px rgba(var(--gw-rgb),.39),inset 0 1px rgba(255,255,255,.14);
 }
 
 .pm-app :is(.pm-main,.pm-sidebar) :is(button,.gw-settings-preferences a,.gw-settings-demo-actions span,.gw-settings-demo-filters span,summary):not(.pm-library-art,.gw-library-select,.gw-settings-theme-tile,.pm-button-danger) {
   border-radius:var(--gw-radius);
-  border-color:rgba(var(--gw-rgb),.34);
+  border-color:rgba(211,241,239,.34);
   background:var(--gw-glass-fill);
-  box-shadow:inset 0 1px rgba(244,248,255,.12),0 2px 5px #02050836;
+  box-shadow:inset 0 1px rgba(244,248,255,.25),inset 0 -1px rgba(var(--gw-tail-rgb),.30),0 2px 5px #02050855;
   -webkit-backdrop-filter:blur(var(--gw-blur)) saturate(var(--gw-sat));
   backdrop-filter:blur(var(--gw-blur)) saturate(var(--gw-sat));
 }
@@ -53,8 +77,8 @@
   .gw-settings-demo-actions span:first-child,.gw-settings-demo-filters span:first-child
 ):not(.gw-library-select,.pm-library-art,.gw-settings-theme-tile) {
   background:var(--gw-glass-active);
-  border-color:rgba(var(--gw-tail-rgb),.72);
-  box-shadow:inset 0 1px rgba(var(--gw-tail-rgb),.44),0 2px 5px #02050846;
+  border-color:var(--gw-secondary);
+  box-shadow:inset 0 1px 2px #effff5b0,inset 0 -2px 4px rgba(var(--gw-tail-rgb),.65),0 0 11px rgba(var(--gw-rgb),.38);
   color:#fbfcff;
 }
 .pm-app :is(.pm-main,.pm-sidebar) :is(button,.gw-settings-preferences a,summary):not(
@@ -63,6 +87,11 @@
 .pm-app :is(.pm-main,.pm-sidebar) :is(.pm-nav-link.active,.pm-button-primary,.gw-tools-button.primary,
   button[aria-pressed="true"],button[aria-selected="true"],.gw-settings-nav-active
 ):not(:disabled,.pm-library-art,.gw-library-select,.gw-settings-theme-tile)>svg { color:var(--gw-secondary); }
+.pm-app .pm-sidebar .pm-nav-link:not(.active,:hover,:focus-visible) {
+  box-shadow:none;
+  border-color:transparent;
+  background:linear-gradient(119deg,rgba(var(--gw-rgb),.065),rgba(var(--gw-tail-rgb),.035)),transparent;
+}
 .pm-app .gw-settings-theme-tile { border-radius:var(--gw-radius); }
 .pm-app .gw-settings-theme-tile:is(:hover,[aria-checked="true"]) {
   border-color:var(--gw-secondary); box-shadow:inset 0 1px rgba(var(--gw-tail-rgb),.52);
@@ -75,7 +104,22 @@
     linear-gradient(126deg,var(--gw-gradient-start),var(--gw-gradient-end));
 }
 @media(forced-colors:active) {
+  .gw-glass-ribbon { display:none; }
   .pm-app :is(.pm-main,.pm-sidebar) :is(button[aria-pressed="true"],button[aria-selected="true"],.pm-nav-link.active,.gw-settings-theme-tile[aria-checked="true"]) {
     border-color:Highlight; outline:1px solid Highlight; outline-offset:-2px;
   }
+}
+
+/* The reference keeps the rail substantial and the working area compact. */
+@media(min-width:1350px) {
+  .pm-app .pm-sidebar { flex-basis:clamp(220px,15.4vw,263px); }
+  .pm-app .pm-brand { padding-bottom:18px; }
+  .pm-app .gw-brand-logo { max-height:91px; }
+  .pm-app .pm-nav-link { min-height:49px; font-size:15px; }
+  .pm-app .pm-nav-group { gap:6px; }
+  .pm-app .pm-nav { padding-bottom:19px; border-bottom:1px solid #e6fffa1c; }
+  .pm-app .gw-tools-header { min-height:57px; margin-bottom:9px; }
+  .pm-app .pm-workspace-header { margin-bottom:5px; }
+  .pm-app .pm-update-actions { flex-direction:row; align-items:center; gap:7px; }
+  .pm-app .pm-header-version { white-space:nowrap; }
 }

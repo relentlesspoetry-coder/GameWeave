@@ -88,14 +88,16 @@ let browser;
     const normal=getComputedStyle(document.querySelector('.pm-nav-link:not(.active)'));
     const rgb=key=>app.getPropertyValue(key).trim().split(/\s*,\s*/).join(', ');
     const first=rgb('--gw-rgb'),second=rgb('--gw-tail-rgb');
+    const ribbon=document.querySelector('.gw-glass-ribbon-rail');
+    const secondStop=getComputedStyle(ribbon.querySelectorAll('stop')[2]).stopColor;
     const hasBothHues=style=>style.backgroundImage.includes(first)&&style.backgroundImage.includes(second);
     const probe=document.createElement('span');
     probe.style.color=app.getPropertyValue('--gw-secondary').trim();
     button.append(probe);const secondary=getComputedStyle(probe).color;probe.remove();
     return {gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
-      accent:icon.color===secondary, radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
+      accent:icon.color===secondary, ribbon:secondStop===secondary&&ribbon.getAttribute('aria-hidden')==='true'&&getComputedStyle(ribbon).pointerEvents==='none', radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
   });
-  if(!palette.gradient||!palette.accent||parseFloat(palette.radius)>9||!palette.glass.startsWith('blur(')||!palette.normalGlass.startsWith('blur('))throw Error('Inconsistent dual-color glass theme for '+id+': '+JSON.stringify(palette));
+  if(!palette.gradient||!palette.accent||!palette.ribbon||parseFloat(palette.radius)>9||!palette.glass.startsWith('blur(')||!palette.normalGlass.startsWith('blur('))throw Error('Inconsistent dual-color glass theme for '+id+': '+JSON.stringify(palette));
   const themeAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   results.push({width:1440,name:'Theme: '+id,violations:themeAudit.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:path.join(output,`gameweave-theme-${id}.jpg`),type:'jpeg',quality:88});

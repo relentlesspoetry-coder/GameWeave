@@ -25,6 +25,7 @@ import { SteamGameDetail } from './gameweave/GameDetailLayout';
 import { GameIcon } from './GameIcon';
 import { LaunchTest } from './LaunchTest';
 import { AppearanceSettings } from './gameweave/AppearanceSettings';
+import { GlassRibbon } from './gameweave/GlassRibbon';
 import { GameweaveBrand } from './gameweave/GameweaveBrand';
 import { ToolsHub } from './gameweave/ToolsHub';
 import { readAppearance, saveAppearance, type Appearance } from './gameweave/appearance';
@@ -201,7 +202,9 @@ export default function App() {
   const status = !scan ? 'Not scanned' : scan.installations.length ? 'Steam detected' : 'Steam not found';
 
   return <div className="pm-app" data-gw-theme={appearance.theme} data-gw-glass={appearance.glass} data-gw-motion={appearance.reduceMotion ? 'reduced' : 'full'}>
+    <GlassRibbon placement="workspace"/>
     <aside className="pm-sidebar">
+      <GlassRibbon placement="rail"/>
       <div className="pm-brand"><GameweaveBrand theme={appearance.theme}/></div>
       <nav aria-label="Main navigation" className="pm-nav">
         <div className="pm-nav-group">{(['games', 'windows', 'tools', 'settings'] as Page[]).map(id => {
