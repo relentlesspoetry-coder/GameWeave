@@ -192,3 +192,24 @@ it('does not fall back to Wine when no Proton is installed',async()=>{
  open.mockResolvedValue('/tmp/setup.exe');await click('Choose installer (.exe)');fireEvent.click(screen.getByRole('checkbox'));
  expect((screen.getByRole('button',{name:'Run installer'}) as HTMLButtonElement).disabled).toBe(true);
 });
+
+it('reports actual installer phases and leaves activity indeterminate until setup exits', async()=>{
+ let onlineGames: (Omit<typeof game, 'exitCode'> & {exitCode: number | null})[] = [];
+ invoke.mockImplementation(async command=>{
+  if(command==='install_windows_game'){
+   const running={...game,state:'installer-running',exitCode:null};
+   onlineGames=[running];return running;
+  }
+  return command==='list_windows_games'?{runtimes:[runtime],games:onlineGames,warnings:[]}:null;
+ });
+ const phase = () => document.querySelector('.gw-install-steps [aria-current="step"]')?.textContent;
+ await mount();expect(phase()).toContain('Select installer');
+ open.mockResolvedValue('/Downloads/setup.exe');await click('Choose installer (.exe)');
+ expect(phase()).toContain('Configure');expect(screen.queryByRole('progressbar')).toBeNull();
+ fireEvent.click(screen.getByRole('checkbox'));await click('Run installer');
+ expect(phase()).toContain('Install');expect(screen.getByRole('progressbar').hasAttribute('value')).toBe(false);
+ onlineGames=[game];
+ await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
+ expect(phase()).toContain('Finish');expect(screen.getByText('Setup closed')).toBeTruthy();
+ expect(screen.queryByRole('progressbar')).toBeNull();expect(screen.queryByRole('button',{name:'Launch game'})).toBeNull();
+});

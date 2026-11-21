@@ -18,7 +18,7 @@ let browser;
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const address='http://127.0.0.1:'+server.address().port;
- browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ browser=await chromium.launch({headless:true,executablePath:process.env.PM_UI_CHROMIUM||undefined,args:['--no-sandbox']});
  const context=await browser.newContext();
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const fixture=()=>{
@@ -44,6 +44,12 @@ let browser;
    if(cmd==='scan_steam')return scan;
    if(cmd==='analyze_diagnostics')return {games:reports,system:{os:'Zorin OS',kernel:'Linux 6.14',arch:'x86_64',gpuDevices:['NVIDIA GeForce RTX 3060'],vulkaninfoPath:'/usr/bin/vulkaninfo',icdManifests:['nvidia_icd.json'],notes:[]},warnings:[]};
    if(cmd==='recommend_proton')return {games:games.map(g=>({appId:g.appId,libraryPath:g.libraryPath,gameName:g.name,status:'try-version',suggestedTool:'Proton Experimental',configuredTool:'GE-Proton10-34',reason:'A different installed version may help with the recorded exception.',nextStep:'Back up your selection, then test the game.',confidence:'tentative',alternatives:['GE-Proton10-34'],evidence:['wine-exception']})),note:''};
+   if(cmd==='plugin:dialog|open')return '/home/player/Downloads/Example Setup.exe';
+   if(cmd==='install_windows_game'){
+    if(!args.confirmed||args.runtimeId!=='proton:fixture')throw new Error('Unexpected installer consent or runtime');
+    const game={...windows.games[0],id:'install-fixture',name:args.name,gameExe:null,state:'installer-running',exitCode:null,message:'Setup is running.',prefixDirectory:'/home/player/Games/Example Game/pfx'};
+    windows.games.push(game);return game;
+   }
    if(cmd==='list_windows_games')return windows;
    if(cmd==='get_windows_launch_history')return {entries:[{id:'1-1700000000',kind:'game',runtime:'GE-Proton10-34',startedAt:1700000000000,endedAt:1700000065000,state:'process-failed',exitCode:7,message:'Game process ended.',summaries:['A Windows exception was recorded'],partialLogs:true},{id:'1-1600000000',kind:'installer',runtime:'Wine',startedAt:1600000000000,endedAt:1600000065000,state:'installer-exited',exitCode:0,message:'Setup process ended.',summaries:[],partialLogs:false}],warnings:[]};
    if(cmd==='get_auto_fix_control')return window.__PM_AUTO_CONTROL??{enabled:false,revision:0};
@@ -64,23 +70,44 @@ let browser;
  };
  await page.addInitScript(fixture);
  const results=[];
+ await page.goto(address);
+ const nav=page.getByRole('navigation',{name:'Main navigation'});
+ await nav.getByRole('button',{name:'Settings',exact:true}).click();
+ for(const [label,id] of [['Cyan Purple','cyan-purple'],['Red Orange Gold','red-orange-gold'],['Teal Green Gold','teal-green-gold'],['Carbon Green','carbon-green']]){
+  await page.getByRole('radio',{name:label,exact:true}).click();
+  const logo=page.locator('img.gw-brand-logo:not([hidden])');
+  await logo.waitFor({state:'visible'});
+  if(await logo.getAttribute('src')!==`/branding/${id}.webp`||!(await logo.evaluate(node=>node.complete&&node.naturalWidth===2048)))throw Error('Incorrect or missing theme logo: '+id);
+ }
+
  for(const [width,height] of [[1440,900],[1200,800],[850,620],[1280,800],[390,844]]){
   await page.setViewportSize({width,height});await page.goto(address);await page.getByRole('textbox',{name:'Search games'}).waitFor();
-  for(const name of ['Home','Library','Windows Games','Proton versions','Diagnostics','System Check','Settings']){
+  for(const name of ['Library','Install','Tools','Settings']){
    await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name,exact:true}).click();await page.waitForTimeout(100);
    const overflow=await page.evaluate(()=>({page:document.documentElement.scrollWidth>innerWidth+1,elements:[...document.querySelectorAll('main button,main input,main select,main summary')].filter(el=>{const r=el.getBoundingClientRect();return r.width&&r.height&&(r.right>innerWidth+1||r.left<0)}).map(el=>el.textContent.slice(0,90))}));
    if(overflow.page||overflow.elements.length)throw Error(JSON.stringify({width,name,overflow}));
    if(width===1200||width===850)await page.screenshot({path:path.join(output,`${width}-${name.replaceAll(' ','-')}.jpg`),fullPage:true,type:'jpeg',quality:80});
    if(width===1200){const a=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();results.push({width,name,violations:a.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});}
    else results.push({width,name,layout:'passed'});
-   if(width===1200&&name==='Home'){
-    await page.getByRole('button',{name:/^Scan your library/}).hover();
+   if(width===1200&&name==='Library'){
+    await page.getByRole('button',{name:'Add game',exact:true}).hover();
     const hover=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
-    results.push({width,name:'Home primary action hover',violations:hover.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
+    results.push({width,name:'Library primary action hover',violations:hover.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
    }
   }
  }
- await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Proton versions',exact:true}).click();
+ await page.setViewportSize({width:1440,height:900});
+ await nav.getByRole('button',{name:'Install',exact:true}).click();
+ await page.getByRole('button',{name:'Choose installer (.exe)',exact:true}).click();
+ await page.getByRole('checkbox',{name:/approve running it/i}).check();
+ await page.getByRole('button',{name:'Run installer',exact:true}).click();
+ const installerProgress=page.getByRole('progressbar',{name:/Installer activity/});
+ await installerProgress.waitFor();
+ if(await installerProgress.getAttribute('value')!==null)throw Error('Installer fixture must not show a fabricated completion percentage');
+ await page.screenshot({path:path.join(output,'gameweave-installer-running.png')});
+ await page.reload();
+ await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Tools',exact:true}).click();
+  await page.getByRole('button',{name:/^Proton Manager/}).click();
  await page.getByRole('button',{name:'Load latest releases',exact:true}).click();
  await page.getByLabel('I approve downloading and installing this GE-Proton release.',{exact:true}).check();
  await page.getByRole('button',{name:'Download and install',exact:true}).click();
@@ -147,7 +174,7 @@ let browser;
   results.push({name:'Game detail: '+name,violations:detail.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:path.join(output,'detail-'+name.replaceAll(/[^a-zA-Z]+/g,'-')+'.jpg'),fullPage:true,type:'jpeg',quality:80});
  }
- await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Windows Games',exact:true}).click();
+ await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Install',exact:true}).click();
  await page.getByRole('combobox',{name:'Installed executable for Game Setup'}).selectOption('/home/player/Games/A New Game/Binaries/Win64/game.exe');
  await page.getByLabel('I trust the selected executable and approve saving this game.').check();
  await page.getByText('Game settings and logs',{exact:true}).first().click();
@@ -185,7 +212,7 @@ let browser;
  const touchContext=await browser.newContext({hasTouch:true,viewport:{width:1280,height:800}});
  const touch=await touchContext.newPage();touch.on('pageerror',e=>errors.push(e.message));
  await touch.addInitScript(fixture);await touch.goto(address);await touch.getByRole('textbox',{name:'Search games'}).waitFor();
- for(const name of ['Home','Library','Windows Games','Settings']){
+ for(const name of ['Library','Install','Tools','Settings']){
   await touch.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name,exact:true}).tap();
   const small=await touch.evaluate(()=>[...document.querySelectorAll('button,summary')].filter(el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&(r.width<43.5||r.height<43.5)}).map(el=>el.textContent));
   if(small.length)throw Error('Small Deck touch targets on '+name+': '+JSON.stringify({small,media:await touch.evaluate(()=>({coarse:matchMedia('(any-pointer: coarse)').matches,size:getComputedStyle(document.documentElement).getPropertyValue('--pm-control-size')}))}));
@@ -196,13 +223,13 @@ let browser;
    const outline=await touch.locator('.pm-search').evaluate(el=>getComputedStyle(el).outlineStyle);
    if(outline==='none')throw Error('Library search has no visible focus outline');
   }
-  if(name==='Home')await touch.screenshot({path:path.join(output,'deck-touch-home.jpg'),fullPage:true,type:'jpeg',quality:80});
+  if(name==='Library')await touch.screenshot({path:path.join(output,'deck-touch-home.jpg'),fullPage:true,type:'jpeg',quality:80});
  }
  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Settings',exact:true}).click();
  await page.evaluate(()=>{window.__PM_PENDING_LOGS=[{appId:'100',libraryPath:'/home/player/Games/SteamLibrary',gameName:'Black Myth: Wukong',state:'logging-queued',message:'Log setup is waiting for Steam to close. You can cancel without changing settings.',codes:[],session:null}];});
  await page.getByText('Automatically apply supported fixes',{exact:true}).click();
  await page.getByRole('button',{name:'Cancel queued log setup',exact:true}).waitFor();
- await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Home',exact:true}).click();
+ await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Library',exact:true}).click();
  await page.getByText('1 game log update — review results',{exact:true}).click();
  for(const [width,height] of [[1280,800],[390,844]]){
   await page.setViewportSize({width,height});
@@ -234,7 +261,7 @@ let browser;
  }
  await touchContext.close();
  fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({results,errors},null,2));console.log(JSON.stringify({layouts:results.length,errors,violations:results.filter(r=>r.violations?.length)},null,2));
- for(const file of ['1200-Home.jpg','1200-Library.jpg','1200-Windows-Games.jpg','1200-Settings.jpg','850-Home.jpg','game-detail.jpg','detail-Proton.jpg','detail-Launch-repair.jpg','detail-Backups-details.jpg','windows-options.jpg','deck-touch-home.jpg','launch-history.jpg','resource-monitor.jpg','unified-library.jpg','support-report.jpg','proton-manager.jpg']) {
+ for(const file of ['1200-Library.jpg','1200-Library.jpg','1200-Install.jpg','1200-Settings.jpg','850-Library.jpg','game-detail.jpg','detail-Proton.jpg','detail-Launch-repair.jpg','detail-Backups-details.jpg','windows-options.jpg','deck-touch-home.jpg','launch-history.jpg','resource-monitor.jpg','unified-library.jpg','support-report.jpg','proton-manager.jpg']) {
   console.log('UI_RENDER '+file+' '+fs.readFileSync(path.join(output,file)).toString('base64'));
  }
  await browser.close();server.close();

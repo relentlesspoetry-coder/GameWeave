@@ -1,10 +1,24 @@
-# Proton Medic
+# Gameweave
 
-<p align="center"><img src="src/assets/proton-medic-logo.webp" alt="Proton Medic" width="420" /></p>
+<p align="center"><img src="public/branding/carbon-green.webp" alt="Gameweave" width="420" /></p>
 
-Proton Medic helps Linux players diagnose game problems, manage installed Proton versions, and apply repairs with backups and rollback.
+Gameweave (formerly Proton Medic) helps Linux players diagnose game problems, manage installed Proton versions, and apply repairs with backups and rollback.
 
-**Version:** v0.6.43 · [Downloads](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest)
+[Existing signed releases](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest)
+
+Existing releases retain their Proton Medic package name and signed update channel. The Gameweave UI does not move game files, profiles, or Proton prefixes.
+
+## Gameweave UI preview
+
+These screenshots show the rendered interface with sample data. The installer shows activity without a percentage when the Windows installer does not report one.
+
+| Library | Windows EXE installer |
+| --- | --- |
+| ![Gameweave Library and selected-game details](docs/screenshots/gameweave-library.webp) | ![Carbon Green installation wizard showing an installer in progress](docs/screenshots/gameweave-installer.webp) |
+
+| Tools | Appearance |
+| --- | --- |
+| ![Gameweave Tools hub](docs/screenshots/gameweave-tools.webp) | ![Gameweave Appearance settings with four themes](docs/screenshots/gameweave-appearance.webp) |
 
 ## Features
 
@@ -28,7 +42,7 @@ Proton Medic helps Linux players diagnose game problems, manage installed Proton
 - Load Steam covers from local artwork or Steam’s image servers, and choose a custom PNG or JPEG cover for any game.
 - Preview and export a local troubleshooting report with personal paths redacted by default.
 - Check for signed GitHub updates when requested.
-- Use a blue glass interface with bundled fonts.
+- Switch between four frosted-glass themes: Carbon Green, Cyan Purple, Red Orange Gold, and Teal Green Gold.
 
 The update button appears at the top right on every page, with the installed version directly below it.
 

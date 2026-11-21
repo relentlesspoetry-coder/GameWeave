@@ -4,10 +4,10 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { ImagePlus } from 'lucide-react';
 
 type Source = { source: 'steam' | 'windows'; id: string; libraryPath: string | null };
-type Props = { source: Source; name: string; onOpen: () => void };
+type Props = { source: Source; name: string; onOpen: () => void; readOnly?: boolean };
 const isImage = (value: unknown): value is string => typeof value === 'string' && /^data:image\/(png|jpeg);base64,/.test(value);
 
-export function GameCover({ source, name, onOpen }: Props) {
+export function GameCover({ source, name, onOpen, readOnly = false }: Props) {
   const key = JSON.stringify([source.source, source.id, source.libraryPath]);
   const current = useRef(key); current.current = key;
   const mounted = useRef(false);
@@ -57,11 +57,15 @@ export function GameCover({ source, name, onOpen }: Props) {
     }
   };
   const label = source.source === 'steam' ? 'Steam' : 'Windows';
+  const artwork = image?.key === key
+    ? <img className="pm-game-cover" src={image.uri} alt="" onError={() => setImage(null)}/>
+    : <span className="pm-cover-placeholder" aria-hidden="true"><span>{name}</span><small>Game cover</small></span>;
   return <div ref={element} className="pm-cover">
-    <button type="button" className="pm-library-art" aria-label={`Open ${name} (${label})`} onClick={onOpen}>
-      {image?.key === key ? <img className="pm-game-cover" src={image.uri} alt="" onError={() => setImage(null)}/> : <span className="pm-cover-placeholder" aria-hidden="true"><span>{name}</span><small>Game cover</small></span>}
-    </button>
-    <button type="button" className="pm-cover-change" aria-label={`Change cover for ${name} (${label})`} disabled={busy} onClick={() => void change()}><ImagePlus size={16}/>{busy ? 'Saving…' : 'Change cover'}</button>
+    {readOnly
+      ? <div className="pm-library-art" role="img" aria-label={`${name} cover art`}>{artwork}</div>
+      : <button type="button" className="pm-library-art" aria-label={`Open ${name} (${label})`} onClick={onOpen}>{artwork}</button>
+    }
+    {!readOnly && <button type="button" className="pm-cover-change" aria-label={`Change cover for ${name} (${label})`} disabled={busy} onClick={() => void change()}><ImagePlus size={16}/>{busy ? 'Saving…' : 'Change cover'}</button>}
     {error && <p role="alert" className="pm-cover-error">{error}</p>}
   </div>;
 }

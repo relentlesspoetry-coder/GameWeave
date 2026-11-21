@@ -146,3 +146,39 @@ it('keeps a restored page until the Windows inventory has finished loading',asyn
  expect(screen.getByText('Page 3 of 3')).toBeTruthy();
  expect(within(screen.getByRole('region',{name:'Unified game library'})).getAllByRole('button',{name:/^Open /})).toHaveLength(15);
 });
+
+
+it('selects a Windows game in the contextual panel without navigating or duplicating cover actions',async()=>{
+ await mount();
+ expect(screen.getAllByRole('button',{name:'Open Shared name (Steam)'})).toHaveLength(1);
+ expect(screen.getAllByRole('button',{name:'Open Shared name (Windows)'})).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button',{name:'Select Shared name (Windows)'}));
+ const panel=screen.getByRole('complementary',{name:'Selected game: Shared name'});
+ expect(within(panel).getByText('Windows game')).toBeTruthy();
+ expect(within(panel).getByText('Ready to launch')).toBeTruthy();
+ expect(onWindows).not.toHaveBeenCalled();
+ fireEvent.click(within(panel).getByRole('button',{name:/Configure Game/}));
+ expect(onWindows).toHaveBeenCalledWith(windows);
+});
+
+it('uses existing Windows launcher and consent requirements from selected-game panel',async()=>{
+ await mount();
+ invoke.mockImplementation(async(command:string)=>command==='launch_windows_game'?(windowsData.games=[{...windows,state:'game-running'}])[0]:command==='list_windows_games'?windowsData:null);
+ fireEvent.click(screen.getByRole('button',{name:'Select Shared name (Windows)'}));
+ const panel=screen.getByRole('complementary',{name:'Selected game: Shared name'});
+ await act(async()=>{fireEvent.click(within(panel).getByRole('button',{name:'Play selected Shared name'}));});
+ expect(invoke.mock.calls.filter(call=>call[0]==='launch_windows_game')).toEqual([
+  ['launch_windows_game',{id:'123',confirmed:true}],
+ ]);
+});
+
+it.each([null,{...windows,id:'unexpected'}])('preserves the selected game and refreshes after an invalid launch response (%j)',async(response)=>{
+ await mount();
+ invoke.mockImplementation(async(command:string)=>command==='launch_windows_game'?response:command==='list_windows_games'?windowsData:null);
+ fireEvent.click(screen.getByRole('button',{name:'Select Shared name (Windows)'}));
+ const panel=screen.getByRole('complementary',{name:'Selected game: Shared name'});
+ await act(async()=>{fireEvent.click(within(panel).getByRole('button',{name:'Play selected Shared name'}));});
+ expect(screen.getByRole('alert').textContent).toContain('Check the game status before trying again.');
+ expect(screen.getByRole('button',{name:'Open Shared name (Windows)'})).toBeTruthy();
+ expect(inventoryCalls()).toBe(2);
+});
