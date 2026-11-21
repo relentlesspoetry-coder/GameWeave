@@ -112,3 +112,30 @@
   .pm-sidebar::before {display:none;}
   .pm-app .pm-nav-link.active,.pm-app .gw-view-modes button[aria-pressed=true] {border-color:Highlight;}
 }
+
+/* Desktop posters prioritize artwork and metadata; keyboard or pointer focus reveals
+   the existing quick actions. On touch, the buttons stay in the layout. */
+@media (min-width:1150px) and (hover:hover) and (pointer:fine) {
+  .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card .pm-library-art {
+    max-height:clamp(162px,14.5vw,224px);
+  }
+  .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card-body {
+    padding:2px 9px 7px;
+    gap:3px;
+  }
+  .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card-actions {
+    position:absolute;top:50px;left:7px;right:7px;z-index:2;
+    opacity:0;pointer-events:none;transition:opacity .14s;
+  }
+  .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card:is(:hover,:focus-within) .pm-library-card-actions {
+    opacity:1;pointer-events:auto;
+  }
+  .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card-actions .pm-button {
+    background-color:#051410db;
+  }
+}
+@media (min-width:1150px) and (any-pointer:coarse) {
+  .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card-actions {
+    position:static;opacity:1;pointer-events:auto;
+  }
+}

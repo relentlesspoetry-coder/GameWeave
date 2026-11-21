@@ -112,6 +112,8 @@ let browser;
  await nav.getByRole('button',{name:'Library',exact:true}).click();
  await page.getByRole('button',{name:'Grid view',exact:true}).waitFor();
  await page.locator('.gw-library-parity[data-library-view="grid"]').waitFor();
+ const desktopCards=await page.locator('.gw-library-parity[data-library-view="grid"] .pm-library-card').evaluateAll(cards=>cards.map(card=>card.getBoundingClientRect()));
+ if(desktopCards.length!==8||desktopCards[7].bottom>901)throw Error('Expected two complete Library poster rows at 1440×900: '+JSON.stringify({count:desktopCards.length,last:desktopCards[7]}));
  await page.screenshot({path:path.join(output,'gameweave-library-parity.png')});
  await page.getByRole('button',{name:'List view',exact:true}).click();
  await page.locator('.gw-library-parity[data-library-view="list"]').waitFor();
