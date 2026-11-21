@@ -124,7 +124,7 @@
     gap:3px;
   }
   .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card-actions {
-    position:absolute;top:50px;left:7px;right:7px;z-index:2;
+    position:absolute;top:6px;left:7px;right:53px;z-index:2;
     opacity:0;pointer-events:none;transition:opacity .14s;
   }
   .pm-app .gw-library-parity[data-library-view="grid"] .pm-library-card:is(:hover,:focus-within) .pm-library-card-actions {
