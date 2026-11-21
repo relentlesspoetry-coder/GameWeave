@@ -37,7 +37,7 @@
 .gw-tools-button:disabled,.gw-tools-tile:disabled {cursor:not-allowed;opacity:.62}
 .gw-tools-button:not(:disabled):hover,.gw-tools-tile:not(:disabled):hover {border-color:var(--gw-accent);box-shadow:inset 0 0 14px rgba(var(--gw-rgb),.26)}
 .gw-tools-view {gap:2px}
-.gw-tools-view button {width:43px;padding:0}
+.gw-tools-view button {width:44px;min-width:44px;min-height:44px;padding:0}
 .gw-tools-tabs {display:grid;grid-template-columns:repeat(6,minmax(0,auto));gap:6px;margin-bottom:14px}
 .gw-tools-tabs button {line-height:1.18}
 .gw-tools-surface {border-radius:16px;padding:12px;margin-bottom:12px}
@@ -99,3 +99,6 @@
 @media(prefers-reduced-motion:reduce) {
   .gw-tools *, .gw-tools *::before, .gw-tools *::after {animation:none;transition:none}
 }
+
+.gw-tools-log-detail {margin-top:7px;border-top:1px solid var(--gw-tools-border);}
+.gw-tools-log-detail summary {display:flex;align-items:center;min-height:44px;cursor:pointer;font-size:.82rem;}
