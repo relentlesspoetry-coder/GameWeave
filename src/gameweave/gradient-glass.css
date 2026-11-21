@@ -1,0 +1,81 @@
+/* Gameweave's flat glass controls. The first hue lights the surface;
+   the second hue draws the edge and marks the current choice. */
+.pm-app {
+  --gw-gradient-start:#0a281c;
+  --gw-gradient-end:#202b0e;
+  --gw-glass-panel:linear-gradient(135deg,rgba(var(--gw-rgb),.115),rgba(var(--gw-tail-rgb),.09)),rgba(7,13,17,.78);
+  --gw-glass-fill:linear-gradient(125deg,rgba(var(--gw-rgb),.15),rgba(var(--gw-rgb),.045) 43%,rgba(var(--gw-tail-rgb),.12)),rgba(9,16,22,.43);
+  --gw-glass-active:linear-gradient(120deg,rgba(var(--gw-rgb),.34),rgba(var(--gw-tail-rgb),.23)),rgba(9,16,22,.54);
+  --gw-radius:7px;
+  --pm-accent:var(--gw-secondary);
+  background:
+    radial-gradient(ellipse at 23% 4%,rgba(var(--gw-rgb),.24),transparent 55%),
+    radial-gradient(ellipse at 100% 85%,rgba(var(--gw-tail-rgb),.14),transparent 65%),
+    linear-gradient(132deg,#080c12,var(--gw-gradient-start) 48%,var(--gw-gradient-end));
+}
+.pm-app[data-gw-theme="cyan-purple"] { --gw-gradient-start:#12264b; --gw-gradient-end:#2d1945; }
+.pm-app[data-gw-theme="red-orange-gold"] { --gw-gradient-start:#3c1722; --gw-gradient-end:#382012; }
+.pm-app[data-gw-theme="teal-green-gold"] { --gw-gradient-start:#0a3035; --gw-gradient-end:#123623; }
+
+.pm-app .pm-sidebar {
+  background:linear-gradient(142deg,rgba(var(--gw-rgb),.15),rgba(6,11,16,.81) 53%,rgba(var(--gw-tail-rgb),.15)),rgba(8,12,17,.63);
+}
+.pm-app .pm-sidebar::before { opacity:.40; }
+.pm-app .gw-system-card { background:var(--gw-glass-panel); }
+.pm-app .gw-library-layout .pm-library-card,
+.pm-app .gw-tools-card,
+.pm-app :is(.pm-section,.gw-library-detail,.pm-windows-game,.pm-metrics),
+.pm-app .gw-settings-pane,
+.pm-app .gw-settings-preferences {
+  background:var(--gw-glass-panel);
+}
+.pm-app .gw-library-layout .pm-library-card.gw-selected {
+  border-color:rgba(var(--gw-tail-rgb),.78);
+  box-shadow:inset 0 1px rgba(255,255,255,.10);
+}
+
+.pm-app :is(.pm-main,.pm-sidebar) :is(button,.gw-settings-preferences a,.gw-settings-demo-actions span,.gw-settings-demo-filters span,summary):not(.pm-library-art,.gw-library-select,.gw-settings-theme-tile,.pm-button-danger) {
+  border-radius:var(--gw-radius);
+  border-color:rgba(var(--gw-rgb),.34);
+  background:var(--gw-glass-fill);
+  box-shadow:inset 0 1px rgba(244,248,255,.12),0 2px 5px #02050836;
+  -webkit-backdrop-filter:blur(var(--gw-blur)) saturate(var(--gw-sat));
+  backdrop-filter:blur(var(--gw-blur)) saturate(var(--gw-sat));
+}
+.pm-app :is(.pm-main,.pm-sidebar) :is(.pm-library-sources,.pm-detail-tabs,.gw-tools-view,.gw-view-modes) {
+  background:transparent; border-color:transparent; box-shadow:none;
+  -webkit-backdrop-filter:none; backdrop-filter:none;
+  gap:5px;
+}
+.pm-app :is(.pm-main,.pm-sidebar) :is(
+  .pm-nav-link.active,.pm-button-primary,.gw-tools-button.primary,
+  button[aria-pressed="true"],button[aria-selected="true"],.gw-settings-nav-active,
+  .gw-settings-demo-actions span:first-child,.gw-settings-demo-filters span:first-child
+):not(.gw-library-select,.pm-library-art,.gw-settings-theme-tile) {
+  background:var(--gw-glass-active);
+  border-color:rgba(var(--gw-tail-rgb),.72);
+  box-shadow:inset 0 1px rgba(var(--gw-tail-rgb),.44),0 2px 5px #02050846;
+  color:#fbfcff;
+}
+.pm-app :is(.pm-main,.pm-sidebar) :is(button,.gw-settings-preferences a,summary):not(
+  :disabled,.pm-library-art,.gw-library-select,.gw-settings-theme-tile,.pm-button-danger
+):is(:hover,:focus-visible) { border-color:var(--gw-secondary); }
+.pm-app :is(.pm-main,.pm-sidebar) :is(.pm-nav-link.active,.pm-button-primary,.gw-tools-button.primary,
+  button[aria-pressed="true"],button[aria-selected="true"],.gw-settings-nav-active
+):not(:disabled,.pm-library-art,.gw-library-select,.gw-settings-theme-tile)>svg { color:var(--gw-secondary); }
+.pm-app .gw-settings-theme-tile { border-radius:var(--gw-radius); }
+.pm-app .gw-settings-theme-tile:is(:hover,[aria-checked="true"]) {
+  border-color:var(--gw-secondary); box-shadow:inset 0 1px rgba(var(--gw-tail-rgb),.52);
+}
+.pm-app .gw-settings-check { border-radius:4px; background:var(--gw-secondary); }
+.pm-app .gw-active-theme { color:var(--gw-secondary); }
+.pm-app .gw-settings-appearance :is(input[type="checkbox"],input[type="range"]) { accent-color:var(--gw-secondary); }
+.pm-app .gw-settings-demo {
+  background:radial-gradient(ellipse at 16% 17%,rgba(var(--gw-rgb),.29),transparent 67%),
+    linear-gradient(126deg,var(--gw-gradient-start),var(--gw-gradient-end));
+}
+@media(forced-colors:active) {
+  .pm-app :is(.pm-main,.pm-sidebar) :is(button[aria-pressed="true"],button[aria-selected="true"],.pm-nav-link.active,.gw-settings-theme-tile[aria-checked="true"]) {
+    border-color:Highlight; outline:1px solid Highlight; outline-offset:-2px;
+  }
+}

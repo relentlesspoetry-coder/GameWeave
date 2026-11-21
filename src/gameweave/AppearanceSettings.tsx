@@ -30,7 +30,7 @@ export function AppearanceSettings({ value, onChange, saveError }: Props) {
           {THEMES.map((theme, index) => <button key={theme.id} id={'gw-theme-' + theme.id} type="button" role="radio"
             aria-checked={value.theme === theme.id} tabIndex={themeIndex === index ? 0 : -1}
             className="gw-settings-theme-tile"
-            style={{ backgroundImage: 'radial-gradient(ellipse at 65% 60%, ' + theme.colors[1] + '50, transparent 79%), linear-gradient(145deg, ' + theme.colors[0] + ', #0b1a19)' }}
+            style={{ backgroundImage: 'linear-gradient(145deg, ' + theme.colors[1] + '38, ' + theme.colors[2] + '37), linear-gradient(145deg, ' + theme.colors[0] + ', #0b111a)' }}
             onClick={() => set({ theme: theme.id })}
             onKeyDown={event => {
               const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1
@@ -56,10 +56,9 @@ export function AppearanceSettings({ value, onChange, saveError }: Props) {
             <span className="gw-blur-badge"><Check size={13} aria-hidden="true"/> Enabled</span></div>
           <label className="gw-motion-control">
             <span>Reduce motion<small>Minimize decorative transitions and movement.</small></span>
-            <span className="gw-motion-switch">
+            <span className="gw-motion-checkbox">
               <input type="checkbox" checked={value.reduceMotion}
                 onChange={event => set({ reduceMotion: event.target.checked })}/>
-              <span aria-hidden="true"/>
             </span>
           </label>
           <div className="gw-glass-control">

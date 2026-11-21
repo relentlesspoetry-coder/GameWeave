@@ -82,10 +82,20 @@ let browser;
   await nav.getByRole('button',{name:'Library',exact:true}).click();
   await page.locator(`.pm-app[data-gw-theme="${id}"] .gw-library-detail`).waitFor();
   const palette=await page.evaluate(()=>{
-    const app=document.querySelector('.pm-app'),button=document.querySelector('.gw-library-play-row .pm-button-primary');
-    return {accent:getComputedStyle(app).getPropertyValue('--gw-accent').trim(),glass:getComputedStyle(button).backdropFilter};
+    const app=getComputedStyle(document.querySelector('.pm-app'));
+    const button=document.querySelector('.gw-library-play-row .pm-button-primary');
+    const primary=getComputedStyle(button), icon=getComputedStyle(button.querySelector('svg'));
+    const normal=getComputedStyle(document.querySelector('.pm-nav-link:not(.active)'));
+    const rgb=key=>app.getPropertyValue(key).trim().split(/\s*,\s*/).join(', ');
+    const first=rgb('--gw-rgb'),second=rgb('--gw-tail-rgb');
+    const hasBothHues=style=>style.backgroundImage.includes(first)&&style.backgroundImage.includes(second);
+    const probe=document.createElement('span');
+    probe.style.color=app.getPropertyValue('--gw-secondary').trim();
+    button.append(probe);const secondary=getComputedStyle(probe).color;probe.remove();
+    return {gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
+      accent:icon.color===secondary, radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
   });
-  if(!palette.accent||!palette.glass.startsWith('blur('))throw Error('Real glass unavailable for '+id);
+  if(!palette.gradient||!palette.accent||parseFloat(palette.radius)>9||!palette.glass.startsWith('blur(')||!palette.normalGlass.startsWith('blur('))throw Error('Inconsistent dual-color glass theme for '+id+': '+JSON.stringify(palette));
   const themeAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   results.push({width:1440,name:'Theme: '+id,violations:themeAudit.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:path.join(output,`gameweave-theme-${id}.jpg`),type:'jpeg',quality:88});
@@ -98,6 +108,7 @@ let browser;
    await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name,exact:true}).click();await page.waitForTimeout(100);
    const overflow=await page.evaluate(()=>({page:document.documentElement.scrollWidth>innerWidth+1,elements:[...document.querySelectorAll('main button,main input,main select,main summary')].filter(el=>{const r=el.getBoundingClientRect();return r.width&&r.height&&(r.right>innerWidth+1||r.left<0)}).map(el=>el.textContent.slice(0,90))}));
    if(overflow.page||overflow.elements.length)throw Error(JSON.stringify({width,name,overflow}));
+   if(width===1440&&name==='Settings')await page.screenshot({path:path.join(output,'gameweave-settings-parity.png')});
    if(width===1200||width===850)await page.screenshot({path:path.join(output,`${width}-${name.replaceAll(' ','-')}.jpg`),fullPage:true,type:'jpeg',quality:80});
    if(width===1200){const a=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();results.push({width,name,violations:a.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});}
    else results.push({width,name,layout:'passed'});

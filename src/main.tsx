@@ -5,6 +5,7 @@ import App from './App';
 import './style.css';
 import './gameweave/theme.css';
 import './gameweave/library-parity.css';
+import './gameweave/gradient-glass.css';
 
 class StartupBoundary extends React.Component<React.PropsWithChildren, {error:string|null}> {
   state:{error:string|null}={error:null};
