@@ -48,7 +48,7 @@ it('opens the library by default and keeps every tool reachable', async () => {
  expect(screen.getByRole('button', {name:'Library',exact:true}).getAttribute('aria-current')).toBe('page');
  await screen.findByRole('button', {name:'Add game',exact:true});
  fireEvent.click(screen.getByRole('button', {name:'Add game',exact:true}));
- expect(await screen.findByRole('heading', {name:'Windows Games',level:1})).toBeTruthy();
+ expect(await screen.findByRole('heading', {name:'Install Game',level:1})).toBeTruthy();
  fireEvent.click(screen.getByRole('button', {name:'Library',exact:true}));
  expect(screen.getByRole('heading', {name:'My Library',level:1})).toBeTruthy();
  for(const label of ['Library','Install','Tools','Settings']) {

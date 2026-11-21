@@ -107,10 +107,12 @@ export function UnifiedLibrary(props:Props){
   if(item.kind==='steam'){setLaunchGame(item.game);return;}
   launchLock.current=true;setLaunching(item.key);
   try{
-   const next=await invoke<WindowsGame>('launch_windows_game',{id:item.game.id,confirmed:true});
-   setWindows(games=>games.map(game=>game.id===next.id?next:game));setRetry(value=>value+1);
+   const id=item.game.id;
+   const next=await invoke<WindowsGame | null>('launch_windows_game',{id,confirmed:true});
+   if(!next||next.id!==id||typeof next.state!=='string')throw new Error('Unexpected Windows launch response. Check the game status before trying again.');
+   setWindows(games=>games.map(game=>game.id===id?next:game));
   }catch(error){setLaunchError(`Could not launch ${item.name}: ${String(error)}`);}
-  finally{launchLock.current=false;setLaunching(null);}
+  finally{setRetry(value=>value+1);launchLock.current=false;setLaunching(null);}
  };
  return <>
   <div className="pm-library-toolbar">

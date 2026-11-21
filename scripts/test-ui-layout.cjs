@@ -18,7 +18,7 @@ let browser;
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const address='http://127.0.0.1:'+server.address().port;
- browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ browser=await chromium.launch({headless:true,executablePath:process.env.PM_UI_CHROMIUM||undefined,args:['--no-sandbox']});
  const context=await browser.newContext();
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const fixture=()=>{
@@ -44,6 +44,12 @@ let browser;
    if(cmd==='scan_steam')return scan;
    if(cmd==='analyze_diagnostics')return {games:reports,system:{os:'Zorin OS',kernel:'Linux 6.14',arch:'x86_64',gpuDevices:['NVIDIA GeForce RTX 3060'],vulkaninfoPath:'/usr/bin/vulkaninfo',icdManifests:['nvidia_icd.json'],notes:[]},warnings:[]};
    if(cmd==='recommend_proton')return {games:games.map(g=>({appId:g.appId,libraryPath:g.libraryPath,gameName:g.name,status:'try-version',suggestedTool:'Proton Experimental',configuredTool:'GE-Proton10-34',reason:'A different installed version may help with the recorded exception.',nextStep:'Back up your selection, then test the game.',confidence:'tentative',alternatives:['GE-Proton10-34'],evidence:['wine-exception']})),note:''};
+   if(cmd==='plugin:dialog|open')return '/home/player/Downloads/Example Setup.exe';
+   if(cmd==='install_windows_game'){
+    if(!args.confirmed||args.runtimeId!=='proton:fixture')throw new Error('Unexpected installer consent or runtime');
+    const game={...windows.games[0],id:'install-fixture',name:args.name,gameExe:null,state:'installer-running',exitCode:null,message:'Setup is running.',prefixDirectory:'/home/player/Games/Example Game/pfx'};
+    windows.games.push(game);return game;
+   }
    if(cmd==='list_windows_games')return windows;
    if(cmd==='get_windows_launch_history')return {entries:[{id:'1-1700000000',kind:'game',runtime:'GE-Proton10-34',startedAt:1700000000000,endedAt:1700000065000,state:'process-failed',exitCode:7,message:'Game process ended.',summaries:['A Windows exception was recorded'],partialLogs:true},{id:'1-1600000000',kind:'installer',runtime:'Wine',startedAt:1600000000000,endedAt:1600000065000,state:'installer-exited',exitCode:0,message:'Setup process ended.',summaries:[],partialLogs:false}],warnings:[]};
    if(cmd==='get_auto_fix_control')return window.__PM_AUTO_CONTROL??{enabled:false,revision:0};
@@ -64,6 +70,16 @@ let browser;
  };
  await page.addInitScript(fixture);
  const results=[];
+ await page.goto(address);
+ const nav=page.getByRole('navigation',{name:'Main navigation'});
+ await nav.getByRole('button',{name:'Settings',exact:true}).click();
+ for(const [label,id] of [['Cyan Purple','cyan-purple'],['Red Orange Gold','red-orange-gold'],['Teal Green Gold','teal-green-gold'],['Carbon Green','carbon-green']]){
+  await page.getByRole('radio',{name:label,exact:true}).click();
+  const logo=page.locator('img.gw-brand-logo:not([hidden])');
+  await logo.waitFor({state:'visible'});
+  if(await logo.getAttribute('src')!==`/branding/${id}.webp`||!(await logo.evaluate(node=>node.complete&&node.naturalWidth===2048)))throw Error('Incorrect or missing theme logo: '+id);
+ }
+
  for(const [width,height] of [[1440,900],[1200,800],[850,620],[1280,800],[390,844]]){
   await page.setViewportSize({width,height});await page.goto(address);await page.getByRole('textbox',{name:'Search games'}).waitFor();
   for(const name of ['Library','Install','Tools','Settings']){
@@ -80,6 +96,16 @@ let browser;
    }
   }
  }
+ await page.setViewportSize({width:1440,height:900});
+ await nav.getByRole('button',{name:'Install',exact:true}).click();
+ await page.getByRole('button',{name:'Choose installer (.exe)',exact:true}).click();
+ await page.getByRole('checkbox',{name:/approve running it/i}).check();
+ await page.getByRole('button',{name:'Run installer',exact:true}).click();
+ const installerProgress=page.getByRole('progressbar',{name:/Installer activity/});
+ await installerProgress.waitFor();
+ if(await installerProgress.getAttribute('value')!==null)throw Error('Installer fixture must not show a fabricated completion percentage');
+ await page.screenshot({path:path.join(output,'gameweave-installer-running.png')});
+ await page.reload();
  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Tools',exact:true}).click();
   await page.getByRole('button',{name:/^Proton Manager/}).click();
  await page.getByRole('button',{name:'Load latest releases',exact:true}).click();

@@ -3,8 +3,7 @@ import type { Theme } from './appearance';
 
 /**
  * Displays the actual user-supplied theme logo when present.
- * Until the asset bundle is copied to /public/branding, it fails safely
- * to a text-only mark without breaking the desktop frontend.
+ * Falls back to a text-only mark if the packaged image fails to load.
  */
 export function GameweaveBrand({ theme }: { theme: Theme }) {
   const [loaded, setLoaded] = useState<Theme | null>(null);

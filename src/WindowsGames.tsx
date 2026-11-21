@@ -10,6 +10,7 @@ import { GameIcon } from './GameIcon';
 import { LaunchHistory } from './LaunchHistory';
 import { ResourceMonitor } from './ResourceMonitor';
 import { selectableRuntimes } from './runtimeOptions';
+import { InstallProgress, InstallSteps, installPhase } from './gameweave/InstallProgress';
 interface LogReport { findings: Finding[]; logs: { name: string; status: string; truncated: boolean }[] }
 export interface Runtime { id: string; name: string; kind: string }
 export interface Game { id: string; name: string; runtimeId: string; gameExe: string | null; state: string; exitCode: number | null; message: string; directory: string; windowsDrive: string; prefixDirectory: string; logDirectory: string | null; launchArguments?: string[]; workingDirectory?: string | null; lastLaunchedAt?: number | null }
@@ -30,6 +31,8 @@ export function WindowsGames({selectedId,onBack}:{selectedId?:string;onBack?:()=
   const [prefix, setPrefix] = useState('');
   const [runtime, setRuntime] = useState('');
   const [approved, setApproved] = useState(false);
+  const [startingInstaller, setStartingInstaller] = useState(false);
+  const [lastInstallerId, setLastInstallerId] = useState<string>();
   const runtimeRef = useRef('');
   const chooseRuntime = (next: string) => { runtimeRef.current = next; setRuntime(next); setApproved(false); };
   const [busy, setBusy] = useState(false);
@@ -74,34 +77,74 @@ export function WindowsGames({selectedId,onBack}:{selectedId?:string;onBack?:()=
   const pickExecutable = () => run(async () => {
     const file = await open({ multiple: false, directory: false, filters: [{ name: mode === 'install' ? 'Windows installer' : 'Windows game', extensions: ['exe'] }] });
     if (typeof file !== 'string') return;
+    setLastInstallerId(undefined);
     setInstaller(file); setName(file.split('/').pop()?.replace(/\.exe$/i, '') ?? 'Windows game'); setApproved(false);
     const drive = file.lastIndexOf('/drive_c/');
     setPrefix(mode === 'existing' && drive >= 0 ? file.slice(0, drive) : '');
   });
   const submit = () => run(async () => {
     if (!approved || !installer || !name.trim() || !selectableRuntimes(library.runtimes).some(r => r.id === runtime) || (mode === 'existing' && !prefix)) return;
-    const game = mode === 'install'
-      ? await invoke<Game>('install_windows_game', { name, installer, runtimeId: runtime, confirmed: true })
-      : await invoke<Game>('register_windows_game', { name, path: installer, prefix, runtimeId: runtime, confirmed: true });
-    if (game?.id) remember(game);
+    if (mode === 'install') setStartingInstaller(true);
+    const game = await (mode === 'install'
+      ? invoke<Game>('install_windows_game', { name, installer, runtimeId: runtime, confirmed: true })
+      : invoke<Game>('register_windows_game', { name, path: installer, prefix, runtimeId: runtime, confirmed: true })).finally(() => setStartingInstaller(false));
+    if (game?.id) {
+      remember(game);
+      if (mode === 'install') setLastInstallerId(game.id);
+    }
     setApproved(false); await refresh();
-    if (mode === 'install' && game.state === 'start-failed') {
+    if (mode === 'install' && game?.state === 'start-failed') {
       setError(game.message);
       return;
     }
+    if (!game?.id) return;
     setNotice(mode === 'install' ? 'Installer started. Complete its setup window, then review the suggested game executable in its card.' : 'Installed game added using its existing prefix.');
   });
-  const switchMode = (next: 'install' | 'existing') => { setMode(next); setInstaller(''); setName(''); setPrefix(''); setApproved(false); };
+  const switchMode = (next: 'install' | 'existing') => { setMode(next); setInstaller(''); setName(''); setPrefix(''); setApproved(false); setLastInstallerId(undefined); };
 
   const runtimeOptions = selectableRuntimes(library.runtimes);
   const shownGames=selectedId?library.games.filter(game=>game.id===selectedId):library.games;
+  const trackedInstall = library.games.find(game => game.id === lastInstallerId)
+    ?? (!installer ? library.games.find(game => game.state === 'installer-running') : undefined);
+  const trackedRuntime = library.runtimes.find(option => option.id === (trackedInstall?.runtimeId ?? runtime))?.name;
   return <>
     {selectedId&&<button className="pm-back" onClick={onBack}><ArrowLeft size={17}/>Back to My Games</button>}
-    <div className="pm-page-title"><div><h1>{selectedId?shownGames[0]?.name??'Windows game':'Windows Games'}</h1><p>Launch games with their saved runtime and settings.</p></div><button disabled={busy} className="pm-button pm-button-secondary" onClick={() => void run(refresh)}><RefreshCw size={17}/>Refresh</button></div>
+    <div className="pm-page-title"><div><h1>{selectedId?shownGames[0]?.name??'Windows game':'Install Game'}</h1><p>{selectedId?'Launch with the saved runtime and settings.':'Install a Windows game with Proton or add one you already have.'}</p></div><button disabled={busy} className="pm-button pm-button-secondary" onClick={() => void run(refresh)}><RefreshCw size={17}/>Refresh</button></div>
     {refreshError && <p role="alert" className="pm-repair-danger">{refreshError} Your saved games are unchanged. Use Refresh to try again.</p>}
     {error && <p role="alert" className="pm-repair-danger">{error}</p>}
     {notice && <p role="status" className="pm-auto-message">{notice}</p>}
     {library.warnings.map((warning, i) => <p key={i} role="alert" className="pm-repair-danger">{warning}</p>)}
+    {!selectedId&&<section className="pm-section gw-install-page" aria-label="Add Windows game">
+      <div className="pm-windows-tabs" role="group" aria-label="Add game method">
+        <button type="button" aria-pressed={mode === 'install'} className={`pm-button ${mode === 'install' ? 'pm-button-primary' : 'pm-button-secondary'}`} disabled={busy} onClick={() => switchMode('install')}><Download size={17}/>Install a new game</button>
+        <button type="button" aria-pressed={mode === 'existing'} className={`pm-button ${mode === 'existing' ? 'pm-button-primary' : 'pm-button-secondary'}`} disabled={busy} onClick={() => switchMode('existing')}><Plus size={17}/>Add installed game</button>
+      </div>
+      <div className="gw-install-layout" data-mode={mode}>
+        <div className="gw-install-config">
+          {mode === 'install' && <InstallSteps phase={installPhase(installer, startingInstaller, trackedInstall)}/>}
+          <header><h2>{mode === 'install' ? 'Install a Windows game' : 'Add an existing installation'}</h2>
+          <p>{mode === 'install' ? 'Run a trusted .exe installer in a separate Windows prefix.' : 'Choose the game executable and the prefix used to install it. Game files are kept in place.'}</p></header>
+          <div className="gw-install-config-field">
+          {mode === 'install' && <span>Installer file</span>}
+          <button disabled={busy} className="pm-button pm-button-secondary" onClick={() => void pickExecutable()}>{mode === 'install' ? 'Choose installer (.exe)' : 'Choose game (.exe)'}</button>
+          {installer && <p className="pm-selected-path"><code>{installer}</code></p>}
+          </div>
+          <div className="pm-form-grid">
+            <label>Game name<input aria-label="Game name" value={name} maxLength={120} disabled={busy} onChange={e => { setName(e.target.value); setApproved(false); }}/></label>
+            <label>{mode === 'install' ? 'Proton version' : 'Runtime'}<select aria-label="Runtime" value={runtime} disabled={busy} onChange={e => { chooseRuntime(e.target.value); }}>{runtimeOptions.map(r => <option value={r.id} key={r.id}>{r.name} ({r.kind})</option>)}</select></label>
+          </div>
+          {mode === 'existing' && <div className="pm-prefix-picker"><button className="pm-button pm-button-secondary" disabled={busy} onClick={() => void run(async () => {
+            const directory = await open({ multiple: false, directory: true, title: 'Choose the existing Windows prefix containing drive_c and system.reg' });
+            if (typeof directory === 'string') { setPrefix(directory); setApproved(false); }
+          })}>Choose existing prefix</button><p>{prefix ? <code>{prefix}</code> : 'Choose the folder containing drive_c and system.reg. For Proton, choose compatdata/pfx.'}</p></div>}
+          {!runtimeOptions.length && loaded && <p role="status">No usable Proton runtime found. Install Proton in Steam, or install GE-Proton and UMU, then refresh.</p>}
+          <label className="pm-launch-consent"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)}/><span>{mode === 'install' ? 'I trust this installer and approve running it. Windows programs can access my user files.' : 'I trust this executable and approve using the selected runtime with its existing prefix.'}</span></label>
+          <footer><button className="pm-button pm-button-primary" disabled={busy || !approved || !installer || !name.trim() || !selectableRuntimes(library.runtimes).some(r => r.id === runtime) || (mode === 'existing' && !prefix)} onClick={() => void submit()}><Download size={17}/>{busy ? 'Working…' : mode === 'install' ? 'Run installer' : 'Add game'}</button></footer>
+          <details className="pm-update-details"><summary>{mode === 'install' ? 'Installation help' : 'Which prefix should I use?'}</summary><p>{mode === 'install' ? 'Complete the installer’s setup window and keep Gameweave open. When it finishes, select the installed game’s .exe in its card below. Files on other drives can be selected. An installer exit code alone does not confirm installation.' : 'Use the same prefix and runtime that previously ran the game. A new empty prefix will not contain its registry settings or installed dependencies. Adding a game saves a launcher profile without copying or reinstalling it.'}</p></details>
+        </div>
+        {mode === 'install' && <InstallProgress installer={installer} name={name} runtime={trackedRuntime} game={trackedInstall} starting={startingInstaller}/>}
+      </div>
+    </section>}
     <section className="pm-section" aria-label="Managed Windows games">
       <div className="pm-section-heading"><div><h2>{selectedId?'Game controls':'Your Windows games'}</h2><p>Choose a game to launch, rename, or manage.</p></div></div>
       {!shownGames.length && <p role="status">{loaded ? selectedId?'This game is no longer in the visible library. Return to My Games or restore it from Windows Games.':'No Windows games have been added yet.' : refreshError ? 'Windows game library unavailable.' : 'Loading Windows games…'}</p>}
@@ -109,28 +152,6 @@ export function WindowsGames({selectedId,onBack}:{selectedId?:string;onBack?:()=
       {!selectedId&&!!library.removedGames?.length && <details className="pm-update-details"><summary>Removed games ({library.removedGames.length})</summary><p>Game files and prefixes are kept. Restore a game to show it in this list again.</p><div className="pm-removed-games">{library.removedGames.map(game => <div className="pm-removed-game" key={game.id}><span>{game.name}</span><button disabled={busy || isRunning(game)} className="pm-button pm-button-secondary" onClick={() => void run(async () => { await invoke('set_windows_game_hidden', { id: game.id, hidden: false, confirmed: true }); await refresh(); })}>Restore {game.name}</button></div>)}</div></details>}
 
     </section>
-    {!selectedId&&<section className="pm-section" aria-label="Add Windows game">
-      <div className="pm-windows-tabs" role="group" aria-label="Add game method">
-        <button type="button" aria-pressed={mode === 'install'} className={`pm-button ${mode === 'install' ? 'pm-button-primary' : 'pm-button-secondary'}`} disabled={busy} onClick={() => switchMode('install')}><Download size={17}/>Install a new game</button>
-        <button type="button" aria-pressed={mode === 'existing'} className={`pm-button ${mode === 'existing' ? 'pm-button-primary' : 'pm-button-secondary'}`} disabled={busy} onClick={() => switchMode('existing')}><Plus size={17}/>Add installed game</button>
-      </div>
-      <h2>{mode === 'install' ? 'Install a Windows game' : 'Add an existing installation'}</h2>
-      <p>{mode === 'install' ? 'Run a trusted .exe installer in a separate Windows prefix.' : 'Choose the game executable and the prefix used to install it. Game files are kept in place.'}</p>
-      <button disabled={busy} className="pm-button pm-button-secondary" onClick={() => void pickExecutable()}>{mode === 'install' ? 'Choose installer (.exe)' : 'Choose game (.exe)'}</button>
-      {installer && <p className="pm-selected-path"><code>{installer}</code></p>}
-      <div className="pm-form-grid">
-        <label>Game name<input aria-label="Game name" value={name} maxLength={120} disabled={busy} onChange={e => { setName(e.target.value); setApproved(false); }}/></label>
-        <label>Runtime<select aria-label="Runtime" value={runtime} disabled={busy} onChange={e => { chooseRuntime(e.target.value); }}>{runtimeOptions.map(r => <option value={r.id} key={r.id}>{r.name} ({r.kind})</option>)}</select></label>
-      </div>
-      {mode === 'existing' && <div className="pm-prefix-picker"><button className="pm-button pm-button-secondary" disabled={busy} onClick={() => void run(async () => {
-        const directory = await open({ multiple: false, directory: true, title: 'Choose the existing Windows prefix containing drive_c and system.reg' });
-        if (typeof directory === 'string') { setPrefix(directory); setApproved(false); }
-      })}>Choose existing prefix</button><p>{prefix ? <code>{prefix}</code> : 'Choose the folder containing drive_c and system.reg. For Proton, choose compatdata/pfx.'}</p></div>}
-      {!runtimeOptions.length && loaded && <p role="status">No usable Proton runtime found. Install Proton in Steam, or install GE-Proton and UMU, then refresh.</p>}
-      <label className="pm-launch-consent"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)}/><span>{mode === 'install' ? 'I trust this installer and approve running it. Windows programs can access my user files.' : 'I trust this executable and approve using the selected runtime with its existing prefix.'}</span></label>
-      <button className="pm-button pm-button-primary" disabled={busy || !approved || !installer || !name.trim() || !selectableRuntimes(library.runtimes).some(r => r.id === runtime) || (mode === 'existing' && !prefix)} onClick={() => void submit()}><Download size={17}/>{busy ? 'Working…' : mode === 'install' ? 'Run installer' : 'Add game'}</button>
-      <details className="pm-update-details"><summary>{mode === 'install' ? 'Installation help' : 'Which prefix should I use?'}</summary><p>{mode === 'install' ? 'Complete the installer’s setup window and keep Proton Medic open. When it finishes, select the installed game’s .exe in its card above. Files on other drives can be selected. An installer exit code alone does not confirm installation.' : 'Use the same prefix and runtime that previously ran the game. A new empty prefix will not contain its registry settings or installed dependencies. Adding a game saves a launcher profile without copying or reinstalling it.'}</p></details>
-    </section>}
   </>;
 }
 
