@@ -221,7 +221,7 @@ export default function App() {
       <div className="gw-system-card"><Monitor size={17} aria-hidden="true"/><div><strong>{status}</strong><span>{scan ? `${scan.compatibilityTools.length} Steam compatibility tools` : 'Scan Library to discover games'}</span></div></div>
     </aside>
     <main className="pm-main">
-      <div className="pm-workspace-header">{page === 'games' && !selectedGame && !selectedWindowsId ? <h1>My Library</h1> : <span aria-hidden="true"/>}<AppUpdater/></div>
+      <div className="pm-workspace-header"><AppUpdater/></div>
       <ActiveFixSessions/>
       {error && <div className="pm-error" role="alert"><AlertTriangle size={18}/><p>{error.message}</p><button type="button" onClick={() => setError(null)} aria-label="Dismiss error"><X size={17}/></button></div>}
       {page === 'home' && <>

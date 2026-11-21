@@ -115,10 +115,11 @@ export function UnifiedLibrary(props:Props){
   }catch(error){setLaunchError(`Could not launch ${item.name}: ${String(error)}`);}
   finally{setRetry(value=>value+1);launchLock.current=false;setLaunching(null);}
  };
- return <>
+ return <div className="gw-library-layout gw-library-parity" data-library-view={viewMode}>
+  <div className="gw-library-list">
   <div className="gw-library-controls">
    <div className="pm-library-toolbar">
-    <p className="gw-library-subtitle">All your games, in one place.</p>
+    <div className="gw-library-title"><h1>My Library</h1><p className="gw-library-subtitle">All your games, in one place.</p></div>
     <label className="pm-search"><Search size={17}/><input value={props.query} onChange={event=>props.onQuery(event.target.value)} placeholder="Search games…" aria-label="Search games"/></label>
     <div className="gw-view-modes" role="group" aria-label="Library view">
      <button type="button" aria-label="Grid view" title="Grid view" aria-pressed={viewMode==='grid'} onClick={()=>setViewMode('grid')}><Grid2X2 size={17}/></button>
@@ -146,8 +147,6 @@ export function UnifiedLibrary(props:Props){
   {launchError&&<p role="alert" className="pm-repair-danger">{launchError}</p>}
   {launchGame&&<section ref={launchPanel} tabIndex={-1} className="pm-section pm-library-launch" aria-label={`Launch ${launchGame.name}`}><div className="pm-section-heading"><h2>Launch {launchGame.name}</h2><button className="pm-button pm-button-secondary" aria-label="Close launch options" disabled={steamLaunching} onClick={()=>setLaunchGame(null)}><X size={18}/></button></div><LaunchTest key={steamLibraryKey(launchGame)} game={launchGame} onBusyChange={setSteamLaunching}/></section>}
   {props.sort==='recent'&&<p className="pm-library-note">Uses available Steam last-played dates and recorded Windows game launches. Unknown dates appear last.</p>}
-  <div className="gw-library-layout gw-library-parity" data-library-view={viewMode}>
-   <div className="gw-library-list">
   <section className="pm-library-grid-section" aria-label="Unified game library">
    {!loaded&&!error&&props.source!=='steam'&&<p role="status">Loading Windows games…</p>}
    {props.steamLoading&&!props.scanAvailable&&props.source!=='windows'&&<p role="status">Loading Steam games…</p>}
@@ -229,6 +228,5 @@ export function UnifiedLibrary(props:Props){
        </div>
      </aside>;
    })()}
-  </div>
- </>;
+ </div>;
 }
