@@ -30,8 +30,11 @@
    Anchor the field to the viewport so it remains visible on long pages. */
 .pm-app[data-gw-theme="carbon-green"] {
   background:
-    radial-gradient(ellipse at 13% 99%,rgba(var(--gw-tail-rgb),.06),transparent 47%),
-    linear-gradient(145deg,#080b0c 8%,#0a1110 38%,rgba(var(--gw-rgb),.19) 75%,rgba(var(--gw-rgb),.29) 100%),
+    radial-gradient(ellipse at 13% 99%,rgba(var(--gw-tail-rgb),.045),rgba(var(--gw-tail-rgb),.022) 31%,transparent 66%),
+    linear-gradient(145deg,#080b0c 0%,#080d0e 14%,#091210 28%,
+      rgba(var(--gw-rgb),.035) 40%,rgba(var(--gw-rgb),.078) 52%,
+      rgba(var(--gw-rgb),.144) 64%,rgba(var(--gw-rgb),.211) 76%,
+      rgba(var(--gw-rgb),.263) 88%,rgba(var(--gw-rgb),.29) 100%),
     #080e0e;
   background-attachment:fixed;
 }
@@ -40,7 +43,8 @@
   border-right-color:#d1e3e126;
 }
 .pm-app[data-gw-theme="carbon-green"] .pm-sidebar {
-  background:linear-gradient(154deg,#090d0f 12%,#08110f 56%,rgba(var(--gw-rgb),.145)),#070d0d;
+  background:linear-gradient(154deg,#090d0f 0%,#080e0f 23%,#081310 47%,
+    rgba(var(--gw-rgb),.055) 64%,rgba(var(--gw-rgb),.105) 83%,rgba(var(--gw-rgb),.145) 100%),#070d0d;
 }
 .pm-app .pm-sidebar::before { display:none; }
 .gw-glass-ribbon { pointer-events:none; position:absolute; inset:0 0 auto; width:100%; }
