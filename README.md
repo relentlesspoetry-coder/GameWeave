@@ -8,6 +8,18 @@ Gameweave (formerly Proton Medic) helps Linux players diagnose game problems, ma
 
 Existing releases retain their Proton Medic package name and signed update channel. The Gameweave UI does not move game files, profiles, or Proton prefixes.
 
+## Gameweave UI preview
+
+These screenshots show the rendered interface with sample data. The installer shows activity without a percentage when the Windows installer does not report one.
+
+| Library | Windows EXE installer |
+| --- | --- |
+| ![Gameweave Library and selected-game details](docs/screenshots/gameweave-library.webp) | ![Carbon Green installation wizard showing an installer in progress](docs/screenshots/gameweave-installer.webp) |
+
+| Tools | Appearance |
+| --- | --- |
+| ![Gameweave Tools hub](docs/screenshots/gameweave-tools.webp) | ![Gameweave Appearance settings with four themes](docs/screenshots/gameweave-appearance.webp) |
+
 ## Features
 
 - Browse Steam and Windows games together in Library, with source filters, saved favorites, and recently played sorting.
