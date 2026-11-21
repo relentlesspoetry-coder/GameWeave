@@ -113,12 +113,13 @@ let browser;
     const probe=document.createElement('span');
     probe.style.color=app.getPropertyValue('--gw-secondary').trim();
     button.append(probe);const secondary=getComputedStyle(probe).color;probe.remove();
-    return {gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
+    return {carbonFade:app.backgroundAttachment.split(',').every(layer=>layer.trim()==='fixed')&&app.backgroundImage.includes('rgb(8, 11, 12)')&&app.backgroundImage.includes(first+', 0.29)'),gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
       accent:icon.color===secondary,
       reflection:primary.backgroundImage.includes('radial-gradient')&&primary.boxShadow.includes('inset'),
       ribbon:secondStop===secondary&&ribbon.getAttribute('aria-hidden')==='true'&&getComputedStyle(ribbon).pointerEvents==='none', radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
   });
   if(!palette.gradient||!palette.accent||!palette.reflection||!palette.ribbon||parseFloat(palette.radius)>9||!palette.glass.startsWith('blur(')||!palette.normalGlass.startsWith('blur('))throw Error('Inconsistent dual-color glass theme for '+id+': '+JSON.stringify(palette));
+  if(id==='carbon-green'&&!palette.carbonFade)throw Error('Carbon Green must keep the carbon-to-logo-green background visible throughout the viewport');
   const themeAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   results.push({width:1440,name:'Theme: '+id,violations:themeAudit.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:path.join(output,`gameweave-theme-${id}.jpg`),type:'jpeg',quality:88});

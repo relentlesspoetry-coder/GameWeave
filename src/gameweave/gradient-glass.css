@@ -26,9 +26,21 @@
     linear-gradient(132deg,#111617,#080d0f 47%,#0a1011);
 }
 
+/* Carbon Green fades from carbon black to the green sampled from its logo.
+   Anchor the field to the viewport so it remains visible on long pages. */
+.pm-app[data-gw-theme="carbon-green"] {
+  background:
+    radial-gradient(ellipse at 13% 99%,rgba(var(--gw-tail-rgb),.06),transparent 47%),
+    linear-gradient(145deg,#080b0c 8%,#0a1110 38%,rgba(var(--gw-rgb),.19) 75%,rgba(var(--gw-rgb),.29) 100%),
+    #080e0e;
+  background-attachment:fixed;
+}
 .pm-app .pm-sidebar {
   background:linear-gradient(142deg,#11191b,#060d0f 50%,#0a1315);
   border-right-color:#d1e3e126;
+}
+.pm-app[data-gw-theme="carbon-green"] .pm-sidebar {
+  background:linear-gradient(154deg,#090d0f 12%,#08110f 56%,rgba(var(--gw-rgb),.145)),#070d0d;
 }
 .pm-app .pm-sidebar::before { display:none; }
 .gw-glass-ribbon { pointer-events:none; position:absolute; inset:0 0 auto; width:100%; }
