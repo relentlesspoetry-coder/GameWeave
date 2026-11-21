@@ -1,8 +1,6 @@
 /* Graphite canvas, tapered light ribbons, and edge-lit desktop glass.
    The first hue tints the glass; the second illuminates the polished edge. */
 .pm-app {
-  --gw-gradient-start:#0a281c;
-  --gw-gradient-end:#202b0e;
   --gw-glass-panel:linear-gradient(145deg,rgba(var(--gw-rgb),.075),transparent 38%,rgba(var(--gw-tail-rgb),.055)),rgba(6,12,15,.77);
   --gw-glass-fill:
     radial-gradient(ellipse 106% 152% at 1% -126%,#f0ffffb5 61%,#d7fff00b 71%,transparent 76%),
@@ -10,7 +8,7 @@
     linear-gradient(124deg,rgba(var(--gw-rgb),.19),transparent 51%,rgba(var(--gw-tail-rgb),.11)),
     rgba(8,16,19,.51);
   --gw-glass-active:
-    radial-gradient(ellipse 110% 169% at 3% -141%,#ffffff 62%,#e4fff523 69%,transparent 74%),
+    radial-gradient(ellipse 110% 169% at 3% -141%,rgba(var(--gw-glint-rgb),.78) 62%,rgba(var(--gw-glint-rgb),.13) 69%,transparent 74%),
     linear-gradient(180deg,rgba(var(--gw-rgb),.60),rgba(var(--gw-rgb),.13) 40%,transparent 71%,rgba(var(--gw-tail-rgb),.47)),
     linear-gradient(114deg,rgba(var(--gw-rgb),.18),rgba(var(--gw-tail-rgb),.24)),
     rgba(5,13,14,.79);
@@ -22,9 +20,6 @@
     radial-gradient(ellipse at 12% 93%,rgba(var(--gw-tail-rgb),.055),transparent 53%),
     linear-gradient(132deg,#111617,#080d0f 47%,#0a1011);
 }
-.pm-app[data-gw-theme="cyan-purple"] { --gw-gradient-start:#12264b; --gw-gradient-end:#2d1945; }
-.pm-app[data-gw-theme="red-orange-gold"] { --gw-gradient-start:#3c1722; --gw-gradient-end:#382012; }
-.pm-app[data-gw-theme="teal-green-gold"] { --gw-gradient-start:#0a3035; --gw-gradient-end:#123623; }
 
 .pm-app .pm-sidebar {
   background:linear-gradient(142deg,#11191b,#060d0f 50%,#0a1315);
@@ -78,7 +73,7 @@
 ):not(.gw-library-select,.pm-library-art,.gw-settings-theme-tile) {
   background:var(--gw-glass-active);
   border-color:var(--gw-secondary);
-  box-shadow:inset 0 1px 2px #effff5b0,inset 0 -2px 4px rgba(var(--gw-tail-rgb),.65),0 0 11px rgba(var(--gw-rgb),.38);
+  box-shadow:inset 0 1px 2px rgba(var(--gw-glint-rgb),.72),inset 0 -2px 4px rgba(var(--gw-tail-rgb),.65),0 0 11px rgba(var(--gw-rgb),.38);
   color:#fbfcff;
 }
 .pm-app :is(.pm-main,.pm-sidebar) :is(button,.gw-settings-preferences a,summary):not(
@@ -101,7 +96,7 @@
 .pm-app .gw-settings-appearance :is(input[type="checkbox"],input[type="range"]) { accent-color:var(--gw-secondary); }
 .pm-app .gw-settings-demo {
   background:radial-gradient(ellipse at 16% 17%,rgba(var(--gw-rgb),.29),transparent 67%),
-    linear-gradient(126deg,var(--gw-gradient-start),var(--gw-gradient-end));
+    linear-gradient(126deg,rgba(var(--gw-rgb),.24),rgba(var(--gw-tail-rgb),.18)),#0c1316;
 }
 @media(forced-colors:active) {
   .gw-glass-ribbon { display:none; }

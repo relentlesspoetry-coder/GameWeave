@@ -1,6 +1,5 @@
 /* Scoped theme layer: legacy commands, updater identity, and storage paths remain unchanged. */
 .pm-app {
-  --gw-accent:#55ed68; --gw-secondary:#bbff4b; --gw-rgb:67,237,96;--gw-tail-rgb:187,255,75;
   --gw-base:#07120e; --gw-panel:rgba(11,32,25,.60);
   --gw-blur:18px; --gw-sat:150%;
   --pm-accent:var(--gw-accent); --pm-muted:#c4d5ce; --pm-faint:#9db6ab;
@@ -12,18 +11,6 @@
     radial-gradient(ellipse at 6% 82%,rgba(var(--gw-rgb),.15),transparent 55%),
     linear-gradient(135deg,#060d0c,var(--gw-base) 65%,#040b0b);
   background-attachment:fixed;
-}
-.pm-app[data-gw-theme="cyan-purple"] {
-  --gw-accent:#6d9dff;--gw-secondary:#bd8aff;--gw-rgb:89,135,248;--gw-tail-rgb:189,138,255;
-  --gw-base:#12142e;--gw-panel:rgba(22,24,63,.59);
-}
-.pm-app[data-gw-theme="red-orange-gold"] {
-  --gw-accent:#ff6b73;--gw-secondary:#ff9a55;--gw-rgb:250,85,98;--gw-tail-rgb:255,154,85;
-  --gw-base:#230f15;--gw-panel:rgba(44,20,23,.60);
-}
-.pm-app[data-gw-theme="teal-green-gold"] {
-  --gw-accent:#42e4cc;--gw-secondary:#72ed8f;--gw-rgb:47,221,188;--gw-tail-rgb:114,237,143;
-  --gw-base:#09201a;--gw-panel:rgba(9,38,34,.58);
 }
 .pm-app[data-gw-glass="subtle"]{--gw-blur:9px;--gw-sat:125%;}
 .pm-app[data-gw-glass="strong"]{--gw-blur:28px;--gw-sat:175%;}

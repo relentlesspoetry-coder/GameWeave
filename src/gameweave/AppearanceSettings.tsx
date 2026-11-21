@@ -30,7 +30,7 @@ export function AppearanceSettings({ value, onChange, saveError }: Props) {
           {THEMES.map((theme, index) => <button key={theme.id} id={'gw-theme-' + theme.id} type="button" role="radio"
             aria-checked={value.theme === theme.id} tabIndex={themeIndex === index ? 0 : -1}
             className="gw-settings-theme-tile"
-            style={{ backgroundImage: 'linear-gradient(145deg, ' + theme.colors[1] + '38, ' + theme.colors[2] + '37), linear-gradient(145deg, ' + theme.colors[0] + ', #0b111a)' }}
+            style={{ backgroundImage: 'linear-gradient(145deg, ' + theme.colors[0] + '42, ' + theme.colors[1] + '33), radial-gradient(ellipse at 100% 0%, ' + theme.colors[2] + '25, #0b111a 70%)' }}
             onClick={() => set({ theme: theme.id })}
             onKeyDown={event => {
               const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1

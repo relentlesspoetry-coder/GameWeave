@@ -7,6 +7,7 @@ export function GlassRibbon({ placement }: { placement: 'rail' | 'workspace' }) 
         <stop offset="0" stopColor="var(--gw-accent)" stopOpacity="0"/>
         <stop offset=".23" stopColor="var(--gw-accent)" stopOpacity=".83"/>
         <stop offset=".52" stopColor="var(--gw-secondary)"/>
+        <stop offset=".67" stopColor="var(--gw-glint)" stopOpacity=".84"/>
         <stop offset=".82" stopColor="var(--gw-accent)" stopOpacity=".76"/>
         <stop offset="1" stopColor="var(--gw-accent)" stopOpacity="0"/>
       </linearGradient>

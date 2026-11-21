@@ -1,7 +1,7 @@
 import { ProtonManager } from './ProtonManager';
 import { GameProtonPicker } from './GameProtonPicker';
 import { SupportReport } from './SupportReport';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCircle2,
@@ -28,7 +28,7 @@ import { AppearanceSettings } from './gameweave/AppearanceSettings';
 import { GlassRibbon } from './gameweave/GlassRibbon';
 import { GameweaveBrand } from './gameweave/GameweaveBrand';
 import { ToolsHub } from './gameweave/ToolsHub';
-import { readAppearance, saveAppearance, type Appearance } from './gameweave/appearance';
+import { readAppearance, saveAppearance, themeVariables, type Appearance } from './gameweave/appearance';
 
 type AppError = { source: 'diagnostics' | 'scan' | 'advisor' | 'vulkan'; message: string };
 
@@ -201,7 +201,7 @@ export default function App() {
   const showAllGames = () => { setLibraryPage(0); setSelectedWindowsId(undefined); setLibrarySource('all'); setSelectedKey(null); setQuery(''); setFilter('all'); setPage('games'); };
   const status = !scan ? 'Not scanned' : scan.installations.length ? 'Steam detected' : 'Steam not found';
 
-  return <div className="pm-app" data-gw-theme={appearance.theme} data-gw-glass={appearance.glass} data-gw-motion={appearance.reduceMotion ? 'reduced' : 'full'}>
+  return <div className="pm-app" style={themeVariables(appearance.theme) as CSSProperties} data-gw-theme={appearance.theme} data-gw-glass={appearance.glass} data-gw-motion={appearance.reduceMotion ? 'reduced' : 'full'}>
     <GlassRibbon placement="workspace"/>
     <aside className="pm-sidebar">
       <GlassRibbon placement="rail"/>

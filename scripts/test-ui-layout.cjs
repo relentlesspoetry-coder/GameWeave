@@ -81,6 +81,25 @@ let browser;
   if(await logo.getAttribute('src')!==`/branding/${id}.webp`||!(await logo.evaluate(node=>node.complete&&node.naturalWidth===2048)))throw Error('Incorrect or missing theme logo: '+id);
   await nav.getByRole('button',{name:'Library',exact:true}).click();
   await page.locator(`.pm-app[data-gw-theme="${id}"] .gw-library-detail`).waitFor();
+  const logoColors=await logo.evaluate((img,points)=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+    const context=canvas.getContext('2d',{willReadFrequently:true});
+    context.drawImage(img,0,0);
+    const expected=['--gw-rgb','--gw-tail-rgb','--gw-glint-rgb'].map(name=>
+      getComputedStyle(img.closest('.pm-app')).getPropertyValue(name).trim().split(',').map(Number));
+    // Canvas may round a channel when unpremultiplying the logo's alpha.
+    return points.every(([x,y],i)=>{
+      const pixel=context.getImageData(x,y,1,1).data;
+      return pixel[3]>=250&&expected[i].length===3&&expected[i].every((channel,j)=>Math.abs(channel-pixel[j])<=1);
+    });
+  },{
+    'carbon-green':[[912,391],[1729,610],[1250,510]],
+    'cyan-purple':[[541,200],[980,128],[1076,650]],
+    'red-orange-gold':[[874,119],[1086,508],[1096,91]],
+    'teal-green-gold':[[558,310],[1030,206],[1411,135]],
+  }[id]);
+  if(!logoColors)throw Error('Theme colors no longer match the shipped logo pixels: '+id);
   const palette=await page.evaluate(()=>{
     const app=getComputedStyle(document.querySelector('.pm-app'));
     const button=document.querySelector('.gw-library-play-row .pm-button-primary');
