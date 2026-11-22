@@ -16,7 +16,7 @@ pub(crate) fn eligible(installed: bool, codes: &[String], modified: Option<u64>,
             recommendation: &str, tool: Option<String>) -> FixPlan {
     let has = |code: &str| codes.iter().any(|c| c == code);
     let reason = if !installed { Some("The game folder is unavailable. Reconnect its drive and scan again.") }
-        else if has("anticheat-blocked") { Some("The log reports an unsupported anti-cheat platform. Proton Medic will not bypass anti-cheat.") }
+        else if has("anticheat-blocked") { Some("The log reports an unsupported anti-cheat platform. GameWeave will not bypass anti-cheat.") }
         else if has("vulkan-init") || has("missing-shared-lib") { Some("This evidence points to a system dependency or graphics problem. A Proton switch is not the supported repair for this finding yet.") }
         else if !modified.is_some_and(|t| t <= now + 300 && now.saturating_sub(t) <= 48 * 3600) { Some("Create a fresh Proton log before applying a fix. Diagnose this game to prepare logging automatically, then approve a test launch.") }
         else if !has("wine-exception") && !has("vulkan-device-lost") { Some("No supported automatic repair matches this evidence yet. Existing manual diagnostics and repair tools remain available.") }

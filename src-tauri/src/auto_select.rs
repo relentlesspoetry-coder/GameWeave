@@ -21,7 +21,7 @@ pub struct AutoSelection {
 }
 
 // Token offsets permit a single leaf edit without normalizing or deleting
-// comments, whitespace, or fields Steam doesn't expose to Proton Medic.
+// comments, whitespace, or fields Steam doesn't expose to GameWeave.
 #[derive(Debug)]
 pub(crate) struct Token { pub value: String, pub start: usize, pub end: usize, pub quoted: bool }
 

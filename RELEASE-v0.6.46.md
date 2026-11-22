@@ -1,4 +1,4 @@
-# Proton Medic v0.6.46
+# v0.6.46 release notes
 
 - Keep host media plugins available to games launched from the AppImage. Bundle-only GStreamer paths no longer override the host's normal plugin discovery.
 - Resolve Proton runtime ownership from Steam installations and library mappings, including external drives and symlinks. Flatpak-only or ambiguously shared tools are not launched on the host, and native tools use their actual Steam installation.

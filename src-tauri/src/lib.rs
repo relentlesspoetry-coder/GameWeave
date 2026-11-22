@@ -26,7 +26,7 @@ async fn select_game_proton(app_id:String,library_path:String,tool_path:String,c
 #[tauri::command]
 fn startup_diagnostic(message:String){
     let safe:String=message.chars().filter(|c|!c.is_control() || *c=='\n').take(4000).collect();
-    eprintln!("[Proton Medic startup] {safe}");
+    eprintln!("[GameWeave startup] {safe}");
 }
 mod font_runtime;
 mod scanner;
@@ -282,12 +282,12 @@ async fn restart_after_update(app: tauri::AppHandle, version: String) -> Result<
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     app_update::initialize();
-    eprintln!("[Proton Medic startup] Native process {} starting", env!("CARGO_PKG_VERSION"));
-    let _font_runtime=match font_runtime::initialize(){Ok(guard)=>guard,Err(error)=>{eprintln!("[Proton Medic startup] Font isolation failed: {error}");return;}};
+    eprintln!("[GameWeave startup] Native process {} starting", env!("CARGO_PKG_VERSION"));
+    let _font_runtime=match font_runtime::initialize(){Ok(guard)=>guard,Err(error)=>{eprintln!("[GameWeave startup] Font isolation failed: {error}");return;}};
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|_|{eprintln!("[Proton Medic startup] Tauri setup completed");Ok(())})
+        .setup(|_|{eprintln!("[GameWeave startup] Tauri setup completed");Ok(())})
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if let Err(reason) = app_update::prepare_close() {
@@ -296,8 +296,8 @@ pub fn run() {
                 }
             }
         })
-        .on_page_load(|_,payload|{eprintln!("[Proton Medic startup] Page event: {:?}",payload.event());})
+        .on_page_load(|_,payload|{eprintln!("[GameWeave startup] Page event: {:?}",payload.event());})
         .invoke_handler(tauri::generate_handler![get_game_cover,set_game_cover,get_auto_fix_control,set_auto_fix_control,list_fix_sessions,list_game_protons,list_proton_versions,fetch_proton_releases,install_proton_version,cancel_proton_download,select_game_proton,prepare_support_report,save_support_report,sample_windows_resources,stop_windows_resource_monitor,get_windows_launch_history,save_windows_launch_settings,reset_windows_launch_settings,review_windows_installation,confirm_windows_installation,get_windows_executable_icon,active_update_sessions, stop_update_sessions, begin_app_update,cancel_app_update,restart_after_update,startup_diagnostic,set_windows_game_hidden,get_windows_game_icon,get_steam_game_icon,register_windows_game,find_windows_game_executables,rename_windows_game,create_windows_game_shortcut,list_windows_games, install_windows_game, select_windows_game_executable, launch_windows_game, analyze_windows_game, prepare_game_logging, cancel_game_logging, get_game_logging, restore_game_logging, monitor_game_logs, plan_game_fix, start_game_fix, test_game_fix, rollback_game_fix, finish_game_fix, scan_steam, analyze_diagnostics, probe_vulkan, preview_repair, apply_repair, list_repair_backups, restore_repair, recommend_proton, auto_select_proton, test_game_launch])
         .run(tauri::generate_context!())
-        .expect("failed to start Proton Medic");
+        .expect("failed to start GameWeave");
 }

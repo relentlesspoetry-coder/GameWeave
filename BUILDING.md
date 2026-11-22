@@ -1,4 +1,4 @@
-# Build Proton Medic on Linux
+# Build GameWeave on Linux
 
 ## Requirements
 

@@ -1,7 +1,7 @@
-# Proton Medic Linux AppImage patch
+# GameWeave Linux AppImage patch
 
 Base: the exact crates.io `tauri-plugin-updater` 2.13.3 package.
-Original `.crate` SHA256: `855a336eb389d2c1502244fd48fa2d8cb487a430f691bbaed025195f99a04489` (matches Proton Medic's registry Cargo.lock entry).
+Original `.crate` SHA256: `855a336eb389d2c1502244fd48fa2d8cb487a430f691bbaed025195f99a04489` (matches GameWeave's registry Cargo.lock entry).
 Original `.cargo_vcs_info.json`, Cargo manifests, and license files are retained.
 
 Focused delta: `src/updater.rs` delegates only its Linux/BSD AppImage install branch to the new private `src/updater/appimage.rs` module. Downloads, signatures, signed versions, public APIs, DEB/RPM, Windows, and macOS behavior are unchanged.
@@ -22,7 +22,7 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml -p tauri-plugin-updater
 
 `src/updater/metadata.rs` retries only the release-metadata GET, at most three
 attempts, with 500 ms and 1 s waits. All attempts and waits share the caller's
-check timeout (20 seconds in Proton Medic), including a reduced request timeout
+check timeout (20 seconds in GameWeave), including a reduced request timeout
 on later attempts. A transient HTTP 408/500/502/503/504 or typed reqwest timeout
 is eligible. HTTP 429 is deliberately excluded rather than ignoring Retry-After.
 Exhausted HTTP errors retain their status in the technical details. Metadata

@@ -1,4 +1,4 @@
-# Proton Medic v0.6.47
+# v0.6.47 release notes
 
 - Stage AppImage updates beside the installed application and atomically replace it only after the complete replacement is written, synchronized, and executable. An interruption during staging leaves the current application intact.
 - Avoid failed update attempts caused by unavailable temporary or cache directories when the application folder is writable.

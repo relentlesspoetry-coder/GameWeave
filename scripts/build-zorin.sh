@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Proton Medic — local Debian/Ubuntu/Zorin native build gate.
+# GameWeave — local Debian/Ubuntu/Zorin native build gate.
 # No root privileges, no apt installs, no real Steam launches, no repair actions.
 set -Eeuo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 usage() {
   cat <<'USAGE'
-Proton Medic native validation (Zorin OS / Ubuntu / Debian)
+GameWeave native validation (Zorin OS / Ubuntu / Debian)
 
 Usage:
   ./scripts/build-zorin.sh --check   Inspect prerequisites, do not build

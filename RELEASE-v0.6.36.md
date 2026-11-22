@@ -1,4 +1,4 @@
-# Proton Medic v0.6.36
+# v0.6.36 release notes
 
 - Keep Proton selection feedback attached to the game it belongs to when navigating between games.
 - Clear previous selection feedback when retrying, while continuing to prevent concurrent selections.

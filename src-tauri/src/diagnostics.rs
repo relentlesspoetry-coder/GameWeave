@@ -91,7 +91,7 @@ const SIGNATURES: &[Signature] = &[
     Signature {
         code: "anticheat-blocked", severity: "error", title: "Unsupported anti-cheat platform reported",
         description: "The log explicitly reports that an anti-cheat component does not support this platform.",
-        recommendation: "Check the developer's supported platforms. Proton Medic does not bypass anti-cheat.",
+        recommendation: "Check the developer's supported platforms. GameWeave does not bypass anti-cheat.",
         patterns: &["easy anti-cheat is not supported on this platform", "battleye: unsupported platform"],
     },
     Signature {

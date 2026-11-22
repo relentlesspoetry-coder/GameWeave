@@ -24,7 +24,7 @@ pub fn initialize()->Result<Option<FontRuntime>,String>{
     ORIGINAL.set(std::env::var_os("FONTCONFIG_FILE")).map_err(|_|"Font runtime already initialized")?;
     std::env::set_var("FONTCONFIG_FILE",guard.0.join("fonts.conf"));
     // Fontconfig populates this new private cache on first use; no shared cache is imported.
-    eprintln!("[Proton Medic startup] Isolated bundled fonts enabled");
+    eprintln!("[GameWeave startup] Isolated bundled fonts enabled");
     Ok(Some(guard))
 }
 fn restore(command:&mut Command,original:Option<&OsString>){match original{Some(value)=>{command.env("FONTCONFIG_FILE",value);},None=>{command.env_remove("FONTCONFIG_FILE");}}}

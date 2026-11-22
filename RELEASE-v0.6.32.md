@@ -1,4 +1,4 @@
-# Proton Medic v0.6.32
+# v0.6.32 release notes
 
 - Decode JPEG covers before saving them so malformed image files are rejected.
 - Allow damaged custom covers to be replaced while preserving their original bytes in a backup.

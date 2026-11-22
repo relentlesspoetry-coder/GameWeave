@@ -1,4 +1,4 @@
-# Proton Medic v0.6.9
+# v0.6.9 release notes
 
 ## Added
 
@@ -13,7 +13,7 @@
 - Moved the name editor out of the diagnostic details so it is easy to find.
 - Kept icon loading separate from library polling to avoid rereading executable resources on every refresh.
 - Reused the Steam scan index for artwork lookups instead of rescanning libraries for each game image.
-- Preserved backups before changing profile names, list membership, or an existing Proton Medic shortcut.
+- Preserved backups before changing profile names, list membership, or an existing app shortcut.
 
 ## How it works
 
@@ -21,4 +21,4 @@ Choose Rename on a Windows game card, enter a display name, and save it. Choose 
 
 Select a game executable to load its embedded icon. Steam artwork uses files already cached on this computer. Missing or unreadable artwork displays the standard game symbol. Icon extraction reads executable resources without launching the file or contacting an online service.
 
-Choose Create desktop shortcut again to refresh an existing Proton Medic launcher with its current name and icon. The previous launcher is backed up in the profile directory. Unrelated shortcuts are left unchanged.
+Choose Create desktop shortcut again to refresh an existing application launcher with its current name and icon. The previous launcher is backed up in the profile directory. Unrelated shortcuts are left unchanged.

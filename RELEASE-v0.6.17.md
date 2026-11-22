@@ -1,6 +1,6 @@
-# Proton Medic v0.6.17
+# v0.6.17 release notes
 
-- Added optional resource monitoring to Windows game cards during game or installer runs, including Proton Medic desktop shortcut launches.
+- Added optional resource monitoring to Windows game cards during game or installer runs, including application desktop shortcut launches.
 - Shows CPU usage, estimated resident RAM, peak RAM, and the number of observed runtime and child processes.
 - Added a bounded memory trend containing the latest 60 samples, refreshed about every two seconds.
 - Monitoring is off by default and follows one selected game. It pauses when the window is hidden and stops when the run ends; requests expire if the app stops responding.

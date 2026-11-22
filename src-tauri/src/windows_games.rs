@@ -27,7 +27,7 @@ pub(crate) fn require_update_idle()->Result<(),String>{
         return Err("Finish Windows games and installers before closing or updating. No process will be stopped automatically.".into());
     }
     if !UNSAVED.try_lock().map_err(|_|"Wait for the completion receipt")?.is_empty() {
-        return Err("A game completion receipt is still being saved. Keep Proton Medic open and retry.".into());
+        return Err("A game completion receipt is still being saved. Keep GameWeave open and retry.".into());
     }
     Ok(())
 }
@@ -237,7 +237,7 @@ fn locked_record(dir:&Path,previous:&Record,runtime:&Runtime,exe:&Path,install:b
 }
 fn lock_profile(dir:&Path)->Result<File,String>{
     let file=OpenOptions::new().read(true).write(true).create(true).truncate(false).mode(0o600).custom_flags(libc::O_NOFOLLOW).open(dir.join("profile.lock")).map_err(|e|e.to_string())?;
-    file.try_lock().map_err(|_|"Another Proton Medic instance is changing this profile")?;Ok(file)
+    file.try_lock().map_err(|_|"Another GameWeave instance is changing this profile")?;Ok(file)
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct SupervisedSession { directory: PathBuf, record: Record, install: bool, previous_launch: Option<u64> }
@@ -344,7 +344,7 @@ pub fn list()->Result<Library,String>{list_in(root()?,discover_runtimes(&crate::
 fn list_in(root:PathBuf,available_runtimes:Vec<Runtime>)->Result<Library,String>{
     let mut jobs=JOBS.lock().map_err(|_|"Process registry unavailable")?;let mut games=vec![];let mut removed_games=vec![];let mut warnings=vec![];
     let mut pending=UNSAVED.lock().map_err(|_|"Completion receipt lock unavailable")?;
-    pending.retain(|id,record|{let dir=root.join(id);match history::finish(&dir,record).and_then(|_|save(&dir,record)){Ok(())=>{jobs.remove(id);false},Err(e)=>{warnings.push(format!("Completion for {} could not be saved: {e}. Keep Proton Medic open; it will retry.",record.name));true}}});
+    pending.retain(|id,record|{let dir=root.join(id);match history::finish(&dir,record).and_then(|_|save(&dir,record)){Ok(())=>{jobs.remove(id);false},Err(e)=>{warnings.push(format!("Completion for {} could not be saved: {e}. Keep GameWeave open; it will retry.",record.name));true}}});
     for item in fs::read_dir(&root).map_err(|e|e.to_string())?.flatten(){let id=item.file_name().to_string_lossy().into_owned();if !valid_id(&id){continue;}match load(&root,&id){Ok((dir,mut r))=>{
             if r.state.ends_with("running") && r.boot_id.is_none(){
                 let migrate=(||{let _lock=lock_profile(&dir)?;let(_,mut latest)=load(&root,&id)?;
@@ -551,7 +551,7 @@ pub fn launch_shortcut(root:&Path,id:&str)->Result<(),String>{
         std::thread::sleep(std::time::Duration::from_millis(200));
     }
     let(_,done)=load(root,id)?;
-    if done.state=="process-failed"{return Err(format!("{} exited with status {:?}. Open Proton Medic to read the runtime logs.",done.name,done.exit_code));}
+    if done.state=="process-failed"{return Err(format!("{} exited with status {:?}. Open GameWeave to read the runtime logs.",done.name,done.exit_code));}
     Ok(())
 }
 

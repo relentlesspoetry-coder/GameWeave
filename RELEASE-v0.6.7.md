@@ -1,8 +1,8 @@
-# Proton Medic v0.6.7
+# v0.6.7 release notes
 
 ## Added
 
-- New Proton Medic logo in the sidebar, desktop launcher icons, and repository README.
+- New application logo in the sidebar, desktop launcher icons, and repository README.
 - Matching browser icon for frontend development.
 
 ## Changed

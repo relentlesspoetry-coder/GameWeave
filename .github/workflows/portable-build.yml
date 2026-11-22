@@ -1,4 +1,4 @@
-name: Portable Linux package
+name: GameWeave portable Linux package
 on:
   workflow_call:
     inputs:

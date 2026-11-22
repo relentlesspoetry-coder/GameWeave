@@ -153,7 +153,7 @@ fn enable_file(path:&Path,app:&str,guard:bool)->Result<(Status,Option<String>,Op
     let text=std::str::from_utf8(&bytes).map_err(|e|e.to_string())?;
     let before=launch_value(text,app)?;let after=options(before.as_deref().unwrap_or(""))?;
     if before.as_deref()==Some(after.as_str()){return Ok((Status{state:"ready".into(),message:"Proton logging is already enabled for this game.".into(),backup_path:None,can_restore:false},before,Some(after)));}
-    if guard && repairs::require_steam_closed().is_err(){return Ok((Status{state:"waiting-for-steam".into(),message:"Log setup queued. Close Steam completely; Proton Medic will enable this game's logging automatically.".into(),backup_path:None,can_restore:false},None,None));}
+    if guard && repairs::require_steam_closed().is_err(){return Ok((Status{state:"waiting-for-steam".into(),message:"Log setup queued. Close Steam completely; GameWeave will enable this game's logging automatically.".into(),backup_path:None,can_restore:false},None,None));}
     let updated=set_launch_value(text,app,Some(&after))?;
     let(backup,_)=auto_select::write_config(path,&bytes,updated.as_bytes(),guard)?;
     Ok((Status{state:"ready".into(),message:"Proton logging enabled. Launch the game to collect a new diagnostic log.".into(),backup_path:Some(backup),can_restore:true},before,Some(after)))
@@ -167,7 +167,7 @@ pub fn prepare(app:String,library:String,confirmed:bool)->Result<Status,String>{
     if records.len()>=64 && !records.contains_key(&key){return Err("Too many logging setup requests in this app session".into());}
     let _guard=auto_select::CONFIG_LOCK.lock().map_err(|_|"Config lock unavailable")?;
     let path=target(&app,&library)?;
-    if let Some(old)=records.get(&key){if old.status.state=="waiting-for-steam" && old.target!=path{return Err("Steam account changed while queued. Close and reopen Proton Medic before diagnosing the new account.".into());}}
+    if let Some(old)=records.get(&key){if old.status.state=="waiting-for-steam" && old.target!=path{return Err("Steam account changed while queued. Close and reopen GameWeave before diagnosing the new account.".into());}}
     let(status,before,after)=enable_file(&path,&app,true)?;
     // Repeated diagnosis must not discard the original restore receipt.
     if status.backup_path.is_none() && status.state=="ready" {

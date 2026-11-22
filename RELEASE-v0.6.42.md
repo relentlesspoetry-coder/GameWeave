@@ -1,4 +1,4 @@
-# Proton Medic v0.6.42
+# v0.6.42 release notes
 
 - Offer Proton runtimes only when installing or adding Windows games and when choosing a different per-game runtime.
 - Preserve existing profiles and their saved runtimes, game files, and prefixes. Existing profiles can keep their saved runtime while changing launch arguments or the working directory.

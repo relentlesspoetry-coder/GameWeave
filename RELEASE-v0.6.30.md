@@ -1,4 +1,4 @@
-# Proton Medic v0.6.30
+# v0.6.30 release notes
 
 - Fixed GPU detection when Linux device files report a size larger than their actual contents.
 - Improved RAM graph contrast in forced-colors mode.

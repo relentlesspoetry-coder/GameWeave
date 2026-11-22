@@ -57,7 +57,7 @@ def crash_fixture_parent(runtime_pid, launcher_pid, profile_root):
         if current[0] == 'Z' or current[2] != identity[2]:
             return
         time.sleep(0.02)
-    raise AssertionError('Disposable Proton Medic parent did not exit')
+    raise AssertionError('Disposable GameWeave parent did not exit')
 
 class WindowsShortcutTests(unittest.TestCase):
     def setUp(self):

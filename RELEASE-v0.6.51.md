@@ -1,4 +1,4 @@
-# Proton Medic v0.6.51
+# v0.6.51 release notes
 
 - Expire resource readings from their capture time, so delayed or repeated responses cannot keep stale CPU and memory values on screen.
 - Skip corrupt Steam icon files and continue to valid cached artwork.

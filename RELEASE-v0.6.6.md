@@ -1,4 +1,4 @@
-# Proton Medic v0.6.6
+# v0.6.6 release notes
 
 ## Changed
 
@@ -14,7 +14,7 @@ Game discovery, diagnostics, launch checks, Windows installer support, backups, 
 
 ## Updates
 
-Open **Settings → App updates → Check for updates**. Review the available version and notes, then approve installation. Updates are signature-verified before installation. Close and reopen Proton Medic afterward.
+Open **Settings → App updates → Check for updates**. Review the available version and notes, then approve installation. Updates are signature-verified before installation. Close and reopen the app afterward.
 
 ## Requirements
 

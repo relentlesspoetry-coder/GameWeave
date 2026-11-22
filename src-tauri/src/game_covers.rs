@@ -90,7 +90,7 @@ pub async fn get(source:String,id:String,library_path:Option<String>)->Result<Op
     if let Some(bytes)=local{return checked(&bytes).map(Some);}if !steam{return Ok(None);}
     if MISSES.lock().map_err(|_|"Cover cache busy")?.get(&key).is_some_and(|t|t.elapsed()<Duration::from_secs(300)){return Ok(None);}
     let _=rustls::crypto::ring::default_provider().install_default();
-    let client=reqwest::Client::builder().https_only(true).redirect(reqwest::redirect::Policy::none()).connect_timeout(Duration::from_secs(4)).timeout(Duration::from_secs(8)).user_agent("Proton-Medic").build().map_err(|e|e.to_string())?;
+    let client=reqwest::Client::builder().https_only(true).redirect(reqwest::redirect::Policy::none()).connect_timeout(Duration::from_secs(4)).timeout(Duration::from_secs(8)).user_agent("GameWeave").build().map_err(|e|e.to_string())?;
     let url=format!("https://cdn.akamai.steamstatic.com/steam/apps/{game_id}/header.jpg");
     let download=async {
         let mut response=client.get(url).send().await.ok()?.error_for_status().ok()?;

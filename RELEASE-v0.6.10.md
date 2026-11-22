@@ -1,4 +1,4 @@
-# Proton Medic v0.6.10
+# v0.6.10 release notes
 
 ## Performance
 
@@ -22,6 +22,6 @@
 
 ## Update
 
-Choose **Check for updates** at the top right, approve installation, then close and reopen Proton Medic.
+Choose **Check for updates** at the top right, approve installation, then close and reopen the app.
 
 Requirements: Ubuntu 24.04-compatible amd64 Linux, glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1.

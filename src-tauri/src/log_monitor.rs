@@ -113,7 +113,7 @@ pub fn poll() -> Result<Vec<Update>, String> {
         if !entry.eligible { entry.update.state = "review".into(); entry.update.message = entry.reason.clone(); continue; }
         entry.update.state = if !enabled { "detected" } else if !closed { "waiting-for-steam" } else { "queued" }.into();
         entry.update.message = if !enabled { "Supported failure detected. Enable automatic log fixes or use Fix & Test." }
-            else if !closed { "Fix queued. Close Steam completely; Proton Medic will back up and apply the supported change automatically." }
+            else if !closed { "Fix queued. Close Steam completely; GameWeave will back up and apply the supported change automatically." }
             else { "Supported fix queued for application." }.into();
         if !applied_this_poll && entry.may_apply(enabled, closed) {
             // Claim before calling the writer. Errors cannot trigger a retry loop.

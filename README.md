@@ -1,24 +1,24 @@
-# Gameweave
+# GameWeave
 
-<p align="center"><img src="public/branding/carbon-green.webp" alt="Gameweave" width="420" /></p>
+<p align="center"><img src="public/branding/carbon-green.webp" alt="GameWeave" width="420" /></p>
 
-Gameweave (formerly Proton Medic) helps Linux players diagnose game problems, manage installed Proton versions, and apply repairs with backups and rollback.
+GameWeave helps Linux players diagnose game problems, manage installed Proton versions, and apply repairs with backups and rollback.
 
 [Download the latest signed release](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest)
 
-Gameweave retains the Proton Medic package name and signed update channel so existing installs can update in place. The Gameweave UI does not move game files, profiles, or Proton prefixes.
+Existing installations can update in place through the signed update channel. Updates do not move game files, profiles, or Proton prefixes.
 
-## Gameweave UI preview
+## GameWeave UI preview
 
 These screenshots show the rendered interface with sample data. The installer shows activity without a percentage when the Windows installer does not report one.
 
 | Library | Windows EXE installer |
 | --- | --- |
-| ![Gameweave Library and selected-game details](docs/screenshots/gameweave-library.webp) | ![Carbon Green installation wizard showing an installer in progress](docs/screenshots/gameweave-installer.webp) |
+| ![GameWeave Library and selected-game details](docs/screenshots/gameweave-library.webp) | ![Carbon Green installation wizard showing an installer in progress](docs/screenshots/gameweave-installer.webp) |
 
 | Tools | Appearance |
 | --- | --- |
-| ![Gameweave Tools hub](docs/screenshots/gameweave-tools.webp) | ![Gameweave Appearance settings with four themes](docs/screenshots/gameweave-appearance.webp) |
+| ![GameWeave Tools hub](docs/screenshots/gameweave-tools.webp) | ![GameWeave Appearance settings with four themes](docs/screenshots/gameweave-appearance.webp) |
 
 ## Features
 
@@ -50,26 +50,26 @@ The update button appears at the top right on every page, with the installed ver
 
 ### Steam Deck / SteamOS
 
-1. Switch to **Desktop Mode** and download the latest `proton-medic_*_amd64.AppImage` from [Releases](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest).
-2. Move it to a permanent folder such as `~/Applications`. Game shortcuts refer to this location.
+1. Switch to **Desktop Mode** and download the latest `gameweave_*_amd64.AppImage` from [Releases](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest).
+2. Move it to a permanent folder such as `~/Applications`. If this is your first installation, you can name it `GameWeave.AppImage`. Game shortcuts refer to this location, so leave an existing AppImage at its current path.
 3. In Dolphin, open **Properties → Permissions**, enable **Is executable**, then open the AppImage.
 
 GTK, WebKitGTK, and application fonts travel with the AppImage. No DEB installation, administrator password, or change to SteamOS read-only protection is needed. The app updates this same file automatically; keep its folder writable.
 
-If the system reports that FUSE is missing, run it without FUSE from Konsole:
+If the system reports that FUSE is missing, run it without FUSE from Konsole. Use the actual filename if it differs:
 
 ```bash
-APPIMAGE_EXTRACT_AND_RUN=1 "$HOME/Applications/proton-medic_0.6.43_amd64.AppImage"
+APPIMAGE_EXTRACT_AND_RUN=1 "$HOME/Applications/GameWeave.AppImage"
 ```
 
 The portable package is built on Ubuntu 22.04 for x86_64 systems with glibc 2.35 or newer. Graphics drivers and the desktop session come from the operating system. Steam and an installed Proton runtime are required for their respective game-launching features; the application does not install or replace graphics drivers. GE-Proton downloads are available from Proton versions; Valve Proton and Proton Experimental remain managed by Steam.
 
 ### Ubuntu / Debian-compatible desktops
 
-Download the amd64 DEB and install it using a package manager so that dependencies are installed too:
+Download the amd64 DEB and install it using a package manager so that dependencies are installed too. Replace `VERSION` with the downloaded package version:
 
 ```bash
-sudo apt install ./proton-medic_0.6.43_amd64.deb
+sudo apt install ./gameweave_VERSION_amd64.deb
 ```
 
 The DEB requires an Ubuntu 24.04-compatible x86_64 system with glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1. Use the AppImage on SteamOS. Existing installations can check for signed updates in the app.
@@ -78,7 +78,7 @@ The DEB requires an Ubuntu 24.04-compatible x86_64 system with glibc 2.39 or new
 
 Open **Proton versions → Load latest releases**, choose a detected native or Flatpak Steam installation and GE-Proton version, approve the download, and select **Download and install**. **Older releases** loads previous versions. Downloads come from GloriousEggroll's official GitHub repository and are checked against the release's SHA-512 checksum before extraction. Existing versions are never replaced.
 
-Keep Proton Medic open until installation finishes. Progress and cancellation remain available on the Proton versions page. Restart Steam afterward so it discovers the new compatibility tool.
+Keep GameWeave open until installation finishes. Progress and cancellation remain available on the Proton versions page. Restart Steam afterward so it discovers the new compatibility tool.
 
 For a Steam game, open **Library → game → Proton**, choose a version available to that Steam installation, close Steam, and approve **Use selected Proton**. The previous Steam configuration is backed up. Installing a version does not automatically change any game's selection.
 
@@ -104,7 +104,7 @@ Reports include at most 100 Steam games, 50 visible Windows games, and the lates
 
 ## Windows game launchers
 
-Open **Windows Games**, select the installed game’s `.exe` in its card, then choose **Create desktop shortcut**. Shortcuts launch through Proton Medic’s native launcher using the saved runtime, prefix, and working directory. The main window does not need to be open. GNOME may ask you to **Allow Launching** on first use.
+Open **Windows Games**, select the installed game’s `.exe` in its card, then choose **Create desktop shortcut**. Shortcuts launch through GameWeave’s native launcher using the saved runtime, prefix, and working directory. The main window does not need to be open. GNOME may ask you to **Allow Launching** on first use.
 
 When setup closes successfully, the game card suggests likely executables. Choose the correct file, review its name and icon, approve saving, and optionally request desktop shortcuts. Suggestions never launch a game automatically.
 
@@ -112,9 +112,9 @@ Expand **Game settings and logs → Edit launch settings** to select a runtime, 
 
 Expand **Launch history** on a Windows game card to view its latest 20 recorded runs, including desktop shortcut launches. Entries show the runtime used, start time, elapsed time when available, runtime exit result, and recognized log errors. Unknown exits and interrupted runs are labeled explicitly. History begins with v0.6.16; existing logs remain available. Exit code 0 does not confirm that gameplay worked correctly.
 
-While a game or installer is running, choose **Monitor resources** on its Windows game card. The panel shows CPU usage, estimated resident RAM, peak RAM during monitoring, process count, and a short memory trend. Monitoring is off by default, follows one selected game, and pauses when the window is hidden. It also works with Proton Medic desktop shortcuts. Readings include observed child processes; CPU 100% represents one core, and shared memory can be counted more than once in RAM totals.
+While a game or installer is running, choose **Monitor resources** on its Windows game card. The panel shows CPU usage, estimated resident RAM, peak RAM during monitoring, process count, and a short memory trend. Monitoring is off by default, follows one selected game, and pauses when the window is hidden. It also works with GameWeave desktop shortcuts. Readings include observed child processes; CPU 100% represents one core, and shared memory can be counted more than once in RAM totals.
 
-Use **Add installed game** for an installation missing from the list. Select its executable and the existing prefix containing `drive_c` and `system.reg`; use the runtime that previously ran it. This registers the game without reinstalling or copying it. Games installed through Proton Medic may initially appear under their installer’s name. Use **Rename** on the game card to change its display name. **Remove from list** hides the profile while preserving its game files, prefix, and shortcuts. Expand **Removed games** to restore it.
+Use **Add installed game** for an installation missing from the list. Select its executable and the existing prefix containing `drive_c` and `system.reg`; use the runtime that previously ran it. This registers the game without reinstalling or copying it. Games installed through GameWeave may initially appear under their installer’s name. Use **Rename** on the game card to change its display name. **Remove from list** hides the profile while preserving its game files, prefix, and shortcuts. Expand **Removed games** to restore it.
 
 ## Build
 
@@ -130,15 +130,15 @@ Use `npm run dev` for the frontend or `npm run tauri -- dev` for the desktop app
 
 ## Session safety
 
-Games sharing a Windows prefix run one at a time through Proton Medic, including desktop shortcuts. App updates wait for active work across Proton Medic processes using the same application data directory. The main window stays open while it supervises games, installers, downloads, or unfinished repair work. Finish that work before closing. Force-quitting the process or shutting down Linux can still interrupt supervision.
+Games sharing a Windows prefix run one at a time through GameWeave, including desktop shortcuts. App updates wait for active work across GameWeave processes using the same application data directory. The main window stays open while it supervises games, installers, downloads, or unfinished repair work. Finish that work before closing. Force-quitting the process or shutting down Linux can still interrupt supervision.
 
 ## How repairs and updates work
 
-Scans and log analysis stay on your computer. Configuration changes preserve backups and require Steam to be closed. Concurrent configuration writes from Proton Medic instances are excluded. Automatic Proton selection uses versions available to the game’s Steam installation. Game launches and manual repairs require approval. Automatic fixes are optional and limited to supported log findings. If logging setup is waiting for Steam to close, open **Game log updates → Cancel queued log setup** to cancel without changing Steam settings.
+Scans and log analysis stay on your computer. Configuration changes preserve backups and require Steam to be closed. Concurrent configuration writes from GameWeave instances are excluded. Automatic Proton selection uses versions available to the game’s Steam installation. Game launches and manual repairs require approval. Automatic fixes are optional and limited to supported log findings. If logging setup is waiting for Steam to close, open **Game log updates → Cancel queued log setup** to cancel without changing Steam settings.
 
-Steam cover requests contact Steam’s image servers when local artwork is unavailable. Custom cover images stay local. Update checks contact GitHub only when requested. Packages are signature-verified before installation. System package installation may request administrator approval. After installation, Proton Medic automatically reopens into the installed version. When a Windows game or installer is active, the updater lists its name and asks whether to keep it running or stop it before updating. Stopping can lose unsaved progress or interrupt setup. The update waits for sessions to exit and completion records to be saved; it never force-kills a stuck process. Sessions launched by older versions must be closed manually. Finish downloads, queued logging setup, and Fix & Test sessions before updating.
+Steam cover requests contact Steam’s image servers when local artwork is unavailable. Custom cover images stay local. Update checks contact GitHub only when requested. Packages are signature-verified before installation. System package installation may request administrator approval. After installation, GameWeave automatically reopens into the installed version. When a Windows game or installer is active, the updater lists its name and asks whether to keep it running or stop it before updating. Stopping can lose unsaved progress or interrupt setup. The update waits for sessions to exit and completion records to be saved; it never force-kills a stuck process. Sessions launched by older versions must be closed manually. Finish downloads, queued logging setup, and Fix & Test sessions before updating.
 
-Proton Medic does not bypass anti-cheat or DRM. Launch status and log findings help diagnose a game; the player confirms whether it runs correctly. Windows installers run with your user permissions, so use trusted files.
+GameWeave does not bypass anti-cheat or DRM. Launch status and log findings help diagnose a game; the player confirms whether it runs correctly. Windows installers run with your user permissions, so use trusted files.
 
 ## Documentation
 

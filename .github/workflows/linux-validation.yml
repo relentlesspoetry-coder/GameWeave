@@ -1,4 +1,4 @@
-name: Proton Medic — Linux native validation
+name: GameWeave — Linux native validation
 on:
   push:
     branches: [main]

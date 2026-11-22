@@ -1,4 +1,4 @@
-# Proton Medic v0.6.19
+# v0.6.19 release notes
 
 - Added troubleshooting report export in Settings. Choose Steam diagnostics, Windows game status, and optional recent Windows launch history.
 - Preview the exact JSON file before saving. System details are included, and personal paths are redacted by default. Path-bearing fields are replaced in full; game names, runtime names, and selected launch timestamps remain visible.

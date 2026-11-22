@@ -1,4 +1,4 @@
-# Proton Medic v0.6.44
+# v0.6.44 release notes
 
 - Keep draining runtime output if a diagnostic log cannot be written, so a full disk or log I/O error does not itself close the game's output pipe. Lost log output is still reported in the completion receipt.
 - Apply only the Proton version shown in the advisor's approval button. If the recommendation changes, ask the player to review it again before changing Steam settings.

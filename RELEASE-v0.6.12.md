@@ -1,4 +1,4 @@
-# Proton Medic v0.6.12
+# v0.6.12 release notes
 
 ## Interface
 
@@ -16,6 +16,6 @@ Game discovery, installation, launch tests, extracted icons, renaming, removal a
 
 ## Update
 
-Choose **Check for updates** at the top right, review the release, and approve installation. From v0.6.11 onward, Proton Medic automatically opens the installed version after updating.
+Choose **Check for updates** at the top right, review the release, and approve installation. From v0.6.11 onward, the app automatically opens the installed version after updating.
 
 Requirements: Ubuntu 24.04-compatible amd64 Linux, glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1.

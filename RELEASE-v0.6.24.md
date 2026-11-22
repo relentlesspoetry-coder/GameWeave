@@ -1,4 +1,4 @@
-# Proton Medic v0.6.24
+# v0.6.24 release notes
 
 - Windows game supervision now retains detached launcher children until they finish. Prefix locks, update protection, launch history, and resource monitoring remain active throughout the run.
 - Prefix archive and restore operations now share cross-process locks with Windows game launches. Locks remain valid while a compatibility directory is moved.

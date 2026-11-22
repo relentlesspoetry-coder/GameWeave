@@ -1,4 +1,4 @@
-# Proton Medic v0.6.15
+# v0.6.15 release notes
 
 - Consistent 44-pixel targets for update controls, game management actions, detail tabs, and expandable sections across touch and mouse input.
 - Tighter Home spacing on shorter desktop screens, including Steam Deck.

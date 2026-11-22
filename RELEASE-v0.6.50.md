@@ -1,4 +1,4 @@
-# Proton Medic v0.6.50
+# v0.6.50 release notes
 
 - Keep Vulkan and anti-cheat recommendations visible in troubleshooting reports with personal-path redaction enabled. Harmless slash-separated wording previously caused these two recommendations to be hidden.
 - Add regression coverage for all current diagnostic recommendations while continuing to exclude personal paths and raw log evidence.

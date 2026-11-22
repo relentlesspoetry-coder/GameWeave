@@ -1,4 +1,4 @@
-# Proton Medic v0.6.21
+# v0.6.21 release notes
 
 - Simplified the Proton versions page and moved setup instructions into expandable Help.
 - Steam games now list only Proton versions available to their Steam installation. Duplicate version names include their paths.

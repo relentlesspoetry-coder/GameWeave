@@ -1,4 +1,4 @@
-# Proton Medic v0.6.52
+# v0.6.52 release notes
 
 - Retry temporary update-server failures up to three times within the existing 20-second update-check limit.
 - Include underlying connection and timeout causes in the update check's technical error details.
