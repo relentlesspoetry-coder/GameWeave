@@ -164,12 +164,23 @@ let browser;
    }
    await currents.evaluateAll(paths=>paths.forEach(path=>path.getAnimations().forEach(a=>a.play())));
    const reduce=page.getByRole('checkbox',{name:/Reduce motion/i});
+   const currentSelector='.gw-glass-ribbon-workspace .gw-ribbon-core';
+   const awaitMotion=expected=>page.waitForFunction(({selector,expected})=>{
+    const path=document.querySelector(selector);
+    if(!path)return false;
+    const active=path.getAnimations().some(a=>a.animationName==='gw-current-flow'&&a.playState!=='idle');
+    const style=getComputedStyle(path);
+    return expected ? active&&style.animationName==='gw-current-flow' :
+      !active&&style.animationName==='none'&&style.transform==='none';
+   },{selector:currentSelector,expected},{timeout:5000});
    await reduce.check();
-   if(await current.evaluate(path=>path.getAnimations().length))throw Error('Reduce motion must stop the currents');
+   await page.locator('.pm-app[data-gw-motion="reduced"]').waitFor();
+   await awaitMotion(false);
    await reduce.uncheck();
-   if(!await current.evaluate(path=>path.getAnimations().some(a=>a.animationName==='gw-current-flow')))throw Error('Currents must restart after disabling Reduce motion');
+   await page.locator('.pm-app[data-gw-motion="full"]').waitFor();
+   await awaitMotion(true);
    await page.emulateMedia({reducedMotion:'reduce'});
-   if(await current.evaluate(path=>path.getAnimations().length))throw Error('System reduced motion must stop the currents');
+   await awaitMotion(false);
    await page.emulateMedia({reducedMotion:'no-preference'});
   }
 

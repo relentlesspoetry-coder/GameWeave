@@ -84,6 +84,16 @@
     animation:gw-current-flow var(--gw-current-period) ease-in-out infinite;
   }
 }
+.pm-app[data-gw-motion="reduced"] .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill) {
+  animation:none!important;
+  transform:none;
+}
+@media(prefers-reduced-motion:reduce) {
+  .pm-app .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill) {
+    animation:none!important;
+    transform:none;
+  }
+}
 @keyframes gw-current-flow {
   0%,100% { transform:translate(0,0) rotate(0deg); }
   50% { transform:translate(var(--gw-current-x),var(--gw-current-y)) rotate(var(--gw-current-angle)); }
