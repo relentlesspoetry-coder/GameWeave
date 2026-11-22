@@ -1,4 +1,4 @@
-# Proton Medic v0.6.38
+# v0.6.38 release notes
 
 - Read quoted braces as text in Steam configuration and game metadata. Display names and other fields containing a literal brace no longer prevent configuration parsing.
 

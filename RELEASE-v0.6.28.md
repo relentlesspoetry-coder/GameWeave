@@ -1,4 +1,4 @@
-# Proton Medic v0.6.28
+# v0.6.28 release notes
 
 - Rebuilt the library around glass game cards with a midnight-to-azure blue gradient and clearer navigation.
 - Added source filter buttons and a compact recently played section while retaining search, favorites, and sorting.

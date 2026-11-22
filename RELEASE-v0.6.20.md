@@ -1,4 +1,4 @@
-# Proton Medic v0.6.20
+# v0.6.20 release notes
 
 - Added a Proton versions page for downloading current and older GE-Proton releases from the maintainer's official GitHub repository.
 - Choose native or Flatpak Steam as the installation destination. Downloads show progress, support cancellation, and are verified against the published SHA-512 checksum before extraction.
@@ -7,6 +7,6 @@
 - Downloaded native GE-Proton versions use an installed UMU launcher for Windows games, preserving their existing prefix and launch settings. These versions become available in the runtime selector when `umu-run` is on PATH.
 - Corrected recognition of compatibility-tool IDs in nested Steam manifests.
 
-Open **Proton versions → Load latest releases**, select a version and destination, approve the download, and keep Proton Medic open until installation finishes. Restart Steam afterward. Select versions under **My Games → game → Proton**, or **Game settings and logs → Edit launch settings** for Windows games with UMU installed.
+Open **Proton versions → Load latest releases**, select a version and destination, approve the download, and keep the app open until installation finishes. Restart Steam afterward. Select versions under **My Games → game → Proton**, or **Game settings and logs → Edit launch settings** for Windows games with UMU installed.
 
 Valve Proton and Proton Experimental remain managed through Steam's Library → Tools. Flatpak Steam downloads are available to Flatpak Steam only. Signed DEB and AppImage updates remain available.

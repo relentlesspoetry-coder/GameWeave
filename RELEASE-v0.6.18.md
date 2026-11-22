@@ -1,4 +1,4 @@
-# Proton Medic v0.6.18
+# v0.6.18 release notes
 
 - My Games now combines Steam games and visible Windows game profiles in one searchable library.
 - Added Steam/Windows source filters, locally saved favorites, and recently played sorting. Different installations and sources keep separate identities, even when their names match.

@@ -12,6 +12,9 @@ fn argument(s:&str)->Result<String,String>{
     for c in s.chars(){match c {'\\'|'"'|'`'|'$'=>{quoted.push('\\');quoted.push(c);},'%'=>quoted.push_str("%%"),_=>quoted.push(c)}}
     Ok(format!("\"{}\"",quoted.replace('\\',"\\\\")))
 }
+const SHORTCUT_COMMENT: &str = "Launch with the saved GameWeave runtime and prefix";
+const LEGACY_SHORTCUT_COMMENT: &str = "Launch with the saved Proton Medic runtime and prefix";
+
 fn entry(name:&str,binary:&Path,root:&Path,id:&str,icon:&Path)->Result<String,String>{
     let binary=binary.to_str().ok_or("Application path is not UTF-8")?;
     if binary.contains('='){return Err("The application path cannot contain = in a desktop launcher".into());}
@@ -22,7 +25,7 @@ fn entry(name:&str,binary:&Path,root:&Path,id:&str,icon:&Path)->Result<String,St
         // that position fixed and pass a percent-bearing path as an argument.
         format!("/usr/bin/env {}",argument(binary)?)
     } else { argument(binary)? };
-    Ok(format!("[Desktop Entry]\nType=Application\nVersion=1.0\nName={}\nComment=Launch with the saved Proton Medic runtime and prefix\nExec={} --launch-windows-game {} --profile-root {}\nIcon={}\nTerminal=false\nCategories=Game;\nStartupNotify=false\n",value(name)?,launch,argument(id)?,argument(root.to_str().ok_or("Profile path is not UTF-8")?)?,value(icon.to_str().ok_or("Icon path is not UTF-8")?)?))
+    Ok(format!("[Desktop Entry]\nType=Application\nVersion=1.0\nName={}\nComment={SHORTCUT_COMMENT}\nExec={} --launch-windows-game {} --profile-root {}\nIcon={}\nTerminal=false\nCategories=Game;\nStartupNotify=false\n",value(name)?,launch,argument(id)?,argument(root.to_str().ok_or("Profile path is not UTF-8")?)?,value(icon.to_str().ok_or("Icon path is not UTF-8")?)?))
 }
 fn create_file(path:&Path,bytes:&[u8],mode:u32)->Result<(),String>{
     match OpenOptions::new().write(true).create_new(true).mode(mode).open(path){
@@ -48,9 +51,11 @@ fn launcher_identity(text:&str)->Option<(String,String)>{
         if !matches!(key,"Type"|"Version"|"Name"|"Comment"|"Exec"|"Icon"|"Terminal"|"Categories"|"StartupNotify") || fields.insert(key,value).is_some(){return None;}
     }
     if fields.len()!=9 {return None;}
-    for (key,value) in [("Type","Application"),("Version","1.0"),("Comment","Launch with the saved Proton Medic runtime and prefix"),("Terminal","false"),("Categories","Game;"),("StartupNotify","false")] {
+    for (key,value) in [("Type","Application"),("Version","1.0"),("Terminal","false"),("Categories","Game;"),("StartupNotify","false")] {
         if fields.get(key).copied()!=Some(value){return None;}
     }
+    let comment = fields.get("Comment").copied()?;
+    if comment != SHORTCUT_COMMENT && comment != LEGACY_SHORTCUT_COMMENT { return None; }
     let exec=*fields.get("Exec")?;
     let (wrapper,command)=if let Some(rest)=exec.strip_prefix("/usr/bin/env APPIMAGE_EXTRACT_AND_RUN=1 ") {
         ("/usr/bin/env APPIMAGE_EXTRACT_AND_RUN=1 ",rest)
@@ -90,7 +95,7 @@ fn write_launcher(path:&Path,content:&[u8],backups:&Path)->Result<(),String>{
     if previous==content{return Ok(());}
     let before=std::str::from_utf8(&previous).map_err(|_|"Existing shortcut is not UTF-8")?;
     let after=std::str::from_utf8(content).map_err(|_|"Invalid launcher content")?;
-    if launcher_identity(before).is_none() || launcher_identity(before)!=launcher_identity(after){return Err("Existing shortcut is not an unchanged Proton Medic launcher for this profile; it was left unchanged".into());}
+    if launcher_identity(before).is_none() || launcher_identity(before)!=launcher_identity(after){return Err("Existing shortcut is not an unchanged GameWeave launcher for this profile; it was left unchanged".into());}
     if !backups.exists(){use std::os::unix::fs::DirBuilderExt;fs::DirBuilder::new().mode(0o700).create(backups).map_err(|e|e.to_string())?;}
     let meta=fs::symlink_metadata(backups).map_err(|e|e.to_string())?;
     if !meta.is_dir() || meta.file_type().is_symlink(){return Err("Shortcut backup directory must not be a symbolic link".into());}
@@ -114,7 +119,7 @@ pub fn create(id:String,confirmed:bool)->Result<Vec<String>,String>{
     let applications=app_data.parent().ok_or("Data directory unavailable")?.join("applications");
     fs::create_dir_all(&applications).map_err(|e|e.to_string())?;
     let icon=if let Some(path)=crate::windows_games::icon_path(&id){path}else{
-        let path=app_data.join("game-shortcut-icon.png");
+        let path=app_data.join("gameweave-shortcut-icon.png");
         create_file(&path,include_bytes!("../icons/128x128.png"),0o600)?;path
     };
     let content=entry(&name,&crate::portable::executable()?,&root,&id,&icon)?;
@@ -132,10 +137,10 @@ pub fn handle_cli(args:Vec<String>)->Option<i32>{
     if !args.iter().any(|a|a=="--launch-windows-game"){return None;}
     let result=if args.len()==5 && args[1]=="--launch-windows-game" && args[3]=="--profile-root" && Path::new(&args[4]).is_absolute(){
         crate::windows_games::launch_shortcut(Path::new(&args[4]),&args[2])
-    }else{Err("Invalid game shortcut arguments. Recreate the shortcut in Proton Medic.".into())};
+    }else{Err("Invalid game shortcut arguments. Recreate the shortcut in GameWeave.".into())};
     match result{Ok(())=>Some(0),Err(error)=>{
-        eprintln!("Proton Medic: {error}");
-        let _=crate::font_runtime::child_command("notify-send").args(["--app-name=Proton Medic","--","Game could not be launched",&error]).output();
+        eprintln!("GameWeave: {error}");
+        let _=crate::font_runtime::child_command("notify-send").args(["--app-name=GameWeave","--","Game could not be launched",&error]).output();
         Some(1)
     }}
 }
@@ -146,7 +151,7 @@ mod tests{
     #[test] fn entry_uses_profile_id_and_quotes_paths_without_a_shell(){
         let text=entry("Game & Friends",Path::new("/opt/Proton Medic/proton-medic"),Path::new("/data/My Games"),"123-456",Path::new("/icon.png")).unwrap();
         assert!(text.contains("Exec=\"/opt/Proton Medic/proton-medic\" --launch-windows-game \"123-456\" --profile-root \"/data/My Games\""));
-        assert!(text.contains("Terminal=false"));assert!(!text.contains("sh -c"));
+        assert!(text.contains(&format!("Comment={SHORTCUT_COMMENT}")));assert!(text.contains("Terminal=false"));assert!(!text.contains("sh -c"));
     }
     #[test] fn portable_shortcut_preserves_no_fuse_launch_mode() {
         let text=entry("Game",Path::new("/games/Proton Medic.AppImage"),Path::new("/data"),"123",Path::new("/icon")).unwrap();
@@ -209,7 +214,7 @@ mod tests{
     }
     #[test] fn legacy_plain_appimage_and_native_launchers_can_migrate_to_current_format(){
         let portable=entry("Game",Path::new("/old/Medic.AppImage"),Path::new("/data"),"123",Path::new("/icon")).unwrap();
-        let legacy=portable.replace("/usr/bin/env APPIMAGE_EXTRACT_AND_RUN=1 ","");
+        let legacy=portable.replace("/usr/bin/env APPIMAGE_EXTRACT_AND_RUN=1 ","").replace(SHORTCUT_COMMENT,LEGACY_SHORTCUT_COMMENT);
         let native=entry("Game",Path::new("/usr/bin/proton-medic"),Path::new("/data"),"123",Path::new("/icon")).unwrap();
         let percent=entry("Game",Path::new("/opt/Native%Medic"),Path::new("/data"),"123",Path::new("/icon")).unwrap();
         let new=entry("Game",Path::new("/new/Medic.AppImage"),Path::new("/data"),"123",Path::new("/icon")).unwrap();
@@ -225,7 +230,7 @@ mod tests{
         let changed_id=entry("Game",Path::new("/old/Medic.AppImage"),Path::new("/data"),"456",Path::new("/icon")).unwrap();
         let changed_root=entry("Game",Path::new("/old/Medic.AppImage"),Path::new("/other"),"123",Path::new("/icon")).unwrap();
         let exec=old.lines().find(|line|line.starts_with("Exec=")).unwrap();
-        for previous in [changed_id,changed_root,format!("{old}Exec=/bin/other\n"),format!("{old}[Desktop Action Extra]\nExec=/bin/other\n"),format!("{old}Hidden=true\n"),old.replace("Terminal=false","Terminal=true"),old.replace("Comment=Launch with the saved Proton Medic runtime and prefix","Comment=Unrelated launcher"),old.replace(exec,&format!("{exec} --extra")),old.replace("\"/data\"","\"/data%f\""),old.replace("\"/data\"","\"/data\\s\""),old.replace("--profile-root", "--different-option")]{
+        for previous in [changed_id,changed_root,format!("{old}Exec=/bin/other\n"),format!("{old}[Desktop Action Extra]\nExec=/bin/other\n"),format!("{old}Hidden=true\n"),old.replace("Terminal=false","Terminal=true"),old.replace(SHORTCUT_COMMENT,"Unrelated launcher"),old.replace(exec,&format!("{exec} --extra")),old.replace("\"/data\"","\"/data%f\""),old.replace("\"/data\"","\"/data\\s\""),old.replace("--profile-root", "--different-option")]{
             let root=refresh_fixture("refuse-shortcut");let path=root.join("game.desktop");let backups=root.join("backups");
             create_file(&path,previous.as_bytes(),0o700).unwrap();assert!(write_launcher(&path,new.as_bytes(),&backups).is_err());
             assert_eq!(fs::read_to_string(&path).unwrap(),previous);assert!(!backups.exists());fs::remove_dir_all(root).unwrap();

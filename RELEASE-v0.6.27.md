@@ -1,4 +1,4 @@
-# Proton Medic v0.6.27
+# v0.6.27 release notes
 
 - Redesigned the interface with sharper midnight-blue panels, clearer typography, and consistent controls.
 - Grouped navigation into Library and Tools, with a compact page header and persistent update controls.

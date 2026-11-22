@@ -13,7 +13,7 @@ def manifest(version, tag, package, signature, repository, appimage=None, appima
         raise ValueError('Release tag must match the stable application version')
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository):
         raise ValueError('Invalid GitHub repository')
-    expected = f'proton-medic_{version}_amd64.deb'
+    expected = f'gameweave_{version}_amd64.deb'
     if package != expected:
         raise ValueError(f'Expected package name: {expected}')
     decoded = base64.b64decode(signature.strip(), validate=True).decode('utf-8')
@@ -33,7 +33,7 @@ def manifest(version, tag, package, signature, repository, appimage=None, appima
         }}
     }
     if appimage is not None:
-        expected_image = f'proton-medic_{version}_amd64.AppImage'
+        expected_image = f'gameweave_{version}_amd64.AppImage'
         if appimage != expected_image:
             raise ValueError(f'Expected AppImage name: {expected_image}')
         # Reuse the same version-binding validation as the DEB signature.

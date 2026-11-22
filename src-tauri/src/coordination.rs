@@ -32,14 +32,14 @@ fn lock(path: &Path, shared: bool) -> Result<File, String> {
         return Err("Expected a user-owned regular lock file without hard links".into());
     }
     if shared { file.try_lock_shared() } else { file.try_lock() }
-        .map_err(|_|"Another Proton Medic operation holds this lock".to_owned())?;
+        .map_err(|_|"Another GameWeave operation holds this lock".to_owned())?;
     Ok(file)
 }
 pub fn activity() -> Result<File, String> {
     lock(&update_path()?, true).map_err(|e|format!("Cannot start while an app update is active: {e}"))
 }
 pub fn update() -> Result<File, String> {
-    lock(&update_path()?, false).map_err(|e|format!("Finish games, installers, downloads, and repairs in all Proton Medic windows before updating: {e}"))
+    lock(&update_path()?, false).map_err(|e|format!("Finish games, installers, downloads, and repairs in all GameWeave windows before updating: {e}"))
 }
 // Lock a stable sibling, not the configuration inode replaced by atomic writes.
 pub fn config(path: &Path) -> Result<File, String> {
@@ -48,7 +48,7 @@ pub fn config(path: &Path) -> Result<File, String> {
     name.push(path.file_name().ok_or("Configuration filename unavailable")?);
     name.push(".proton-medic.lock");
     lock(&parent.join(name), false)
-        .map_err(|e|format!("Another Proton Medic instance is changing this Steam configuration. Retry after it finishes: {e}"))
+        .map_err(|e|format!("Another GameWeave instance is changing this Steam configuration. Retry after it finishes: {e}"))
 }
 pub struct PrefixLease { _stable: File, _legacy: Option<File> }
 impl PrefixLease {
@@ -63,7 +63,7 @@ pub fn prefix(prefix: &Path) -> Result<PrefixLease, String> {
     let stable = prefix_location(prefix)?;
     let prefix = fs::canonicalize(prefix).map_err(|e|e.to_string())?;
     let legacy = lock(&prefix.join(".proton-medic.lock"), false)
-        .map_err(|e|format!("This Windows prefix is in use by another Proton Medic game or installer: {e}"))?;
+        .map_err(|e|format!("This Windows prefix is in use by another GameWeave game or installer: {e}"))?;
     Ok(PrefixLease { _stable: stable, _legacy: Some(legacy) })
 }
 
@@ -120,7 +120,7 @@ fn prefix_location(path: &Path) -> Result<File,String> {
     let resolved=resolved_location(path)?;
     let hash=format!("{:x}",Sha256::digest(resolved.as_os_str().as_bytes()));
     lock(&update_path()?.with_file_name(format!("prefix-{hash}.lock")),false)
-        .map_err(|e|format!("This Windows prefix is in use by another Proton Medic operation: {e}"))
+        .map_err(|e|format!("This Windows prefix is in use by another GameWeave operation: {e}"))
 }
 pub fn repair_prefix(path: &Path) -> Result<PrefixLease,String> {
     if path.exists() { return prefix(path); }

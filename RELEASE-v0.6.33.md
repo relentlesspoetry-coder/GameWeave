@@ -1,4 +1,4 @@
-# Proton Medic v0.6.33
+# v0.6.33 release notes
 
 - Recognize Steam’s standard Proton Experimental installation when selecting a runtime.
 - Compare custom Proton identifiers correctly so the current runtime is not recommended as an alternative.

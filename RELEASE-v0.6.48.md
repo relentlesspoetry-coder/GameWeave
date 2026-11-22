@@ -1,4 +1,4 @@
-# Proton Medic v0.6.48
+# v0.6.48 release notes
 
 - Recognize form-feed whitespace consistently in Steam VDF files. An unusually formatted library list or game manifest no longer hits the token limit and hides otherwise discoverable games.
 - Add regression coverage for every supported ASCII whitespace separator, quoted whitespace, and external-library discovery.

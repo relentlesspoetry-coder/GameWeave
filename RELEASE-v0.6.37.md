@@ -1,4 +1,4 @@
-# Proton Medic v0.6.37
+# v0.6.37 release notes
 
 - Skip Wine, Proton, and UMU launchers that the current user cannot execute. Runtime discovery can continue to a working launcher later in PATH.
 

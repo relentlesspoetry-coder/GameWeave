@@ -1,6 +1,6 @@
-# Gameweave v0.6.53
+# GameWeave v0.6.53
 
-Proton Medic is now Gameweave in the app. This signed update uses the existing Proton Medic package and updater so existing installations can update in place. It does not move game files, prefixes, or profiles.
+This signed release introduces the GameWeave interface. Existing installations can update in place without moving game files, prefixes, or profiles.
 
 - The redesigned Library keeps Steam and Windows games side by side, with a selected-game pane and dedicated detail tabs.
 - The Windows EXE installation wizard brings runtime selection and install status into one flow. It shows activity rather than an estimated percentage if the installer does not report progress.

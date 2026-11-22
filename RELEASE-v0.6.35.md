@@ -1,4 +1,4 @@
-# Proton Medic v0.6.35
+# v0.6.35 release notes
 
 - Keep image fallback errors from displaying a false startup-failure banner.
 - Remove bundled libraries from space-separated LD_PRELOAD entries before starting host processes from an AppImage. Host preload entries are retained.

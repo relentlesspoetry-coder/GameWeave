@@ -5,7 +5,7 @@ const fs=require('fs');
 const path=require('path');
 const http=require('http');
 const root=path.resolve('dist');
-const output=process.env.PM_UI_OUTPUT || '/tmp/proton-medic-ui';
+const output=process.env.PM_UI_OUTPUT || '/tmp/gameweave-ui';
 fs.mkdirSync(output,{recursive:true});
 const server=http.createServer((request,response)=>{
  const file=path.resolve(root,'.'+new URL(request.url,'http://localhost').pathname);
@@ -35,7 +35,7 @@ let browser;
    if(cmd==='list_fix_sessions')return window.__PM_FIX_SESSIONS??[];
    if(cmd==='finish_game_fix'||cmd==='rollback_game_fix'){window.__PM_FIX_SESSIONS=[];return null;}
    if(cmd==='prepare_support_report')return {token:1,content:JSON.stringify({appVersion:'0.6.19',pathsRedacted:args.options.redactPaths,system:{os:'Zorin OS',architecture:'x86_64'},steam:{games:[{name:'Black Myth: Wukong',installPath:'[redacted path]',status:'review'}]},windows:{games:[{name:'Black Myth: Wukong',runtime:'GE-Proton10-34',exitCode:7}]}},null,2)+'\n'};
-   if(cmd==='save_support_report')return '/home/player/Documents/proton-medic-report.json';
+   if(cmd==='save_support_report')return '/home/player/Documents/gameweave-report.json';
    if(cmd==='list_game_protons')return scan.compatibilityTools;
    if(cmd==='list_proton_versions')return {installations:scan.installations,tools:scan.compatibilityTools,status:window.__PM_PROTON_STATUS??null,umuAvailable:false};
    if(cmd==='fetch_proton_releases')return [{tag:'GE-Proton11-11',name:'GE-Proton11-11-x86_64.tar.gz',size:564789552},{tag:'GE-Proton11-10',name:'GE-Proton11-10-x86_64.tar.gz',size:566144788}];
@@ -307,7 +307,7 @@ let browser;
  }
  await page.getByLabel('I reviewed this report and approve saving it.',{exact:true}).check();
  await page.getByRole('button',{name:'Save report',exact:true}).click();
- await page.getByText('Report saved to /home/player/Documents/proton-medic-report.json. Nothing was uploaded.',{exact:true}).waitFor();
+ await page.getByText('Report saved to /home/player/Documents/gameweave-report.json. Nothing was uploaded.',{exact:true}).waitFor();
  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Library',exact:true}).click();
  await page.getByRole('button',{name:'Open Black Myth: Wukong (Windows)',exact:true}).waitFor();
  const cover=page.locator('.pm-game-cover').first();await cover.waitFor();

@@ -1,4 +1,4 @@
-# Proton Medic v0.6.8
+# v0.6.8 release notes
 
 ## Changed
 
@@ -20,10 +20,10 @@
 
 - Allowed explicitly selected game executables on other drives to use their existing managed prefix.
 - Kept the profile locked while a game or installer is running, including launches from desktop shortcuts.
-- Recognized games launched by another Proton Medic process as running.
+- Recognized games launched by another app process as running.
 
 ## Usage
 
-In Windows Games, select the installed game executable in its card, then choose Create desktop shortcut. If GNOME asks, choose Allow Launching. Keep Proton Medic installed so its native launcher remains available.
+In Windows Games, select the installed game executable in its card, then choose Create desktop shortcut. If GNOME asks, choose Allow Launching. Keep the app installed so its native launcher remains available.
 
 If a game is missing, use Add installed game, choose its executable and the prefix containing drive_c and system.reg, and select the runtime used for that installation. Installer profiles can appear under the setup executable’s name until renamed.

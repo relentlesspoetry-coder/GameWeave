@@ -1,14 +1,14 @@
 # Signed releases and app updates
 
-Repository: https://github.com/relentlesspoetry-coder/Proton-medic
+Repository: [GameWeave on GitHub](https://github.com/relentlesspoetry-coder/Proton-medic)
 
-Proton Medic checks GitHub for a newer stable version when the update button is clicked. It displays the available version and release notes, asks for installation approval, and verifies the package signature and signed version before installing.
+GameWeave checks GitHub for a newer stable version when the update button is clicked. It displays the available version and release notes, asks for installation approval, and verifies the package signature and signed version before installing.
 
 In v0.6.6, updates are in Settings. In v0.6.7, the update button is at the top right on every page, with the installed version beneath it.
 
 ## Signing key
 
-Store the existing maintainer key in the repository's Actions secret named `TAURI_SIGNING_PRIVATE_KEY`. Use the complete contents of `proton-medic.key`. The existing key has an empty password, so `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` can be omitted.
+Store the existing maintainer key in the repository's Actions secret named `TAURI_SIGNING_PRIVATE_KEY`. Use the complete contents of the existing private signing key. The existing key has an empty password, so `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` can be omitted.
 
 Keep a secure offline backup. Never commit the private key or attach it to an issue or release. Existing installations trust the matching embedded public key; a key change requires a migration.
 
@@ -54,22 +54,20 @@ Signing credentials are available only to the signing step. The manifest routes 
 
 ## Verify a local package
 
-After building, copy the DEB to `release/proton-medic_VERSION_amd64.deb`. Keep the private key outside the repository.
+After building, copy the DEB to `release/gameweave_VERSION_amd64.deb`. Keep the private key outside the repository.
 
 ```bash
-npm run tauri -- signer sign --private-key-path /secure/path/proton-medic.key --password '' --app-version VERSION release/proton-medic_VERSION_amd64.deb
-cargo run --locked --manifest-path scripts/verify-signature/Cargo.toml -- src-tauri/tauri.conf.json release/proton-medic_VERSION_amd64.deb VERSION
-python3 scripts/release_manifest.py --tag vVERSION --package release/proton-medic_VERSION_amd64.deb --output release/latest.json
+npm run tauri -- signer sign --private-key-path /secure/path/updater-signing.key --password '' --app-version VERSION release/gameweave_VERSION_amd64.deb
+cargo run --locked --manifest-path scripts/verify-signature/Cargo.toml -- src-tauri/tauri.conf.json release/gameweave_VERSION_amd64.deb VERSION
+python3 scripts/release_manifest.py --tag vVERSION --package release/gameweave_VERSION_amd64.deb --output release/latest.json
 ```
 
 ## Install an update
 
-Finish active Windows games, installers, queued logging setup, and Fix & Test sessions. Check for updates, review the release notes, and approve installation and automatic relaunch. The system package manager may request administrator approval. Proton Medic automatically opens the installed version after a successful update. No separate restart action is required.
+Finish active Windows games, installers, queued logging setup, and Fix & Test sessions. Check for updates, review the release notes, and approve installation and automatic relaunch. The system package manager may request administrator approval. GameWeave automatically opens the installed version after a successful update. No separate restart action is required.
 
 Versions through v0.6.10 require one manual close and reopen after installing v0.6.11 to load the new updater flow.
 
-The stable manifest URL is:
-
-https://github.com/relentlesspoetry-coder/proton-medic/releases/latest/download/latest.json
+The [stable updater manifest](https://github.com/relentlesspoetry-coder/proton-medic/releases/latest/download/latest.json) keeps its existing endpoint so installed clients continue to update.
 
 DEB requirements: Ubuntu 24.04-compatible amd64 Linux, glibc 2.39 or newer, GTK 3, and WebKitGTK 4.1. The AppImage bundles the UI libraries and requires x86_64 Linux with glibc 2.35 or newer and working system graphics drivers. Keep the AppImage in a permanent, user-writable folder for updates and game shortcuts.

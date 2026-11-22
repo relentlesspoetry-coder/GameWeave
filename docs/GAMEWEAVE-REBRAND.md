@@ -1,9 +1,6 @@
-# Gameweave — staged rebrand
+# GameWeave interface and compatibility
 
-Gameweave is a **working name** pending brand clearance. This branch starts
-the UI redesign without changing the Proton Medic product identifier,
-package IDs, saved game profiles, Proton prefixes, updater signatures,
-update endpoints, release metadata or user data.
+GameWeave is the application’s display name. The interface redesign preserves existing game profiles, Proton prefixes, package identity, signing keys, and installed clients’ update path.
 
 ## Design contract
 
@@ -25,8 +22,7 @@ update endpoints, release metadata or user data.
 5. Game Details, Tools, Settings and Steam Deck responsive refinements.
 6. Regression, accessibility, native smoke tests and installer packages.
 
-All new visuals are separated from existing game-management operations;
-the eventual package rename and updater migration require independent review.
+The visuals are separate from existing game-management operations. A change to the installed package identity or signing trust would require an explicit upgrade migration.
 
 ## Original logo assets
 

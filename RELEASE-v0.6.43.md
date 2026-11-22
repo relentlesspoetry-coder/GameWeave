@@ -1,7 +1,7 @@
-# Proton Medic v0.6.43
+# v0.6.43 release notes
 
-- Closing Proton Medic while its Windows games or installers are running now offers **Keep Open** or **Force Quit** instead of an informational dead end.
-- Force Quit warns about lost unsaved progress and interrupted installations, then stops the reviewed Proton Medic sessions and their child processes before exiting. Stubborn processes are forcibly stopped after a short grace period. Steam and unrelated apps are not targeted.
+- Closing the app while its Windows games or installers are running now offers **Keep Open** or **Force Quit** instead of an informational dead end.
+- Force Quit warns about lost unsaved progress and interrupted installations, then stops the reviewed application sessions and their child processes before exiting. Stubborn processes are forcibly stopped after a short grace period. Steam and unrelated apps are not targeted.
 - Canceling or dismissing the prompt leaves games running. Repeated close requests share one confirmation, and new work cannot slip in during shutdown.
 - Fix portable native dialogs by bundling the GTK icon and MIME data they need on clean Linux systems.
 

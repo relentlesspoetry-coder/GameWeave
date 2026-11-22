@@ -1,4 +1,4 @@
-# Proton Medic v0.6.49
+# v0.6.49 release notes
 
 - Repair existing game shortcuts after moving the AppImage or downloading a newer version to a different filename. Open the new application and use Create desktop shortcut for the game. Previous launcher files are backed up before replacement.
 - Keep unrelated or customized launchers, different game profiles, ambiguous commands, and symbolic links unchanged.

@@ -1,4 +1,4 @@
-# Proton Medic v0.6.29
+# v0.6.29 release notes
 
 - Library cards now display dedicated cover artwork instead of enlarged executable icons.
 - Steam games load cached cover images, with a fallback to Steam’s image servers.

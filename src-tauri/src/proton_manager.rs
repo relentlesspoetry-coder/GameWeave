@@ -31,7 +31,7 @@ fn canceled()->Result<(),String>{if CANCEL.load(Ordering::Acquire){Err("Download
 fn safe_name(s:&str)->bool{!s.is_empty()&&s.len()<150&&s.bytes().all(|b|b.is_ascii_alphanumeric()||matches!(b,b'-'|b'_'|b'.'))&&!s.starts_with('.')}
 fn client()->Result<reqwest::Client,String>{
     let _=rustls::crypto::ring::default_provider().install_default();
-    reqwest::Client::builder().user_agent("Proton-Medic").https_only(true).connect_timeout(Duration::from_secs(20)).read_timeout(Duration::from_secs(30)).timeout(Duration::from_secs(3600))
+    reqwest::Client::builder().user_agent("GameWeave").https_only(true).connect_timeout(Duration::from_secs(20)).read_timeout(Duration::from_secs(30)).timeout(Duration::from_secs(3600))
         .redirect(reqwest::redirect::Policy::custom(|attempt|{
             let allowed=matches!(attempt.url().host_str(),Some("github.com"|"api.github.com"|"release-assets.githubusercontent.com"|"objects.githubusercontent.com"));
             if attempt.previous().len()>5 || attempt.url().scheme()!="https" || !allowed {attempt.error("Untrusted release redirect")}else{attempt.follow()}

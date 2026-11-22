@@ -115,7 +115,7 @@ pub fn save(app: tauri::AppHandle, token: u64, confirmed: bool) -> Result<Option
     let content = SNAPSHOTS.lock().map_err(|_|"Report preview unavailable")?.reviewed(token)?;
     let _activity = crate::app_update::activity()?;
     let path = app.dialog().file().set_title("Save troubleshooting report — choose a new file")
-        .set_file_name(format!("proton-medic-report-{}.json",SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_|"Invalid system time")?.as_secs()))
+        .set_file_name(format!("gameweave-report-{}.json",SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_|"Invalid system time")?.as_secs()))
         .add_filter("JSON report", &["json"]).blocking_save_file();
     let Some(path) = path else { return Ok(None) };
     let FilePath::Path(path) = path else { return Err("Choose a local file location.".into()) };
