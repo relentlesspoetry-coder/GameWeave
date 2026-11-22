@@ -5,6 +5,8 @@ import { ImagePlus } from 'lucide-react';
 
 type Source = { source: 'steam' | 'windows'; id: string; libraryPath: string | null };
 type Props = { source: Source; name: string; onOpen: () => void; readOnly?: boolean };
+// Keep independent cover instances (card, inspector, details) coherent.
+const listeners = new Map<string, Set<(uri: string) => void>>();
 const isImage = (value: unknown): value is string => typeof value === 'string' && /^data:image\/(png|jpeg);base64,/.test(value);
 
 export function GameCover({ source, name, onOpen, readOnly = false }: Props) {
@@ -19,6 +21,17 @@ export function GameCover({ source, name, onOpen, readOnly = false }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    const update = (uri: string) => {
+      if (!mounted.current || current.current !== key) return;
+      ++serial.current; // An older native read must not overwrite the saved cover.
+      setImage({ key, uri });
+    };
+    const group = listeners.get(key) ?? new Set();
+    group.add(update);
+    listeners.set(key, group);
+    return () => { group.delete(update); if (!group.size) listeners.delete(key); };
+  }, [key]);
   useEffect(() => {
     if (visible || !element.current) return;
     const observer = new IntersectionObserver(entries => {
@@ -43,12 +56,9 @@ export function GameCover({ source, name, onOpen, readOnly = false }: Props) {
     try {
       const path = await open({ multiple: false, title: `Choose cover for ${name}`, filters: [{ name: 'Game cover (PNG or JPEG)', extensions: ['png', 'jpg', 'jpeg'] }] });
       if (typeof path !== 'string' || !mounted.current || current.current !== key) return;
-      const request = serial.current;
       const uri = await invoke<string>('set_game_cover', { ...source, path, confirmed: true });
-      if (!mounted.current || current.current !== key || request !== serial.current) return;
       if (!isImage(uri)) throw new Error('The selected cover could not be displayed.');
-      ++serial.current;
-      setImage({ key, uri });
+      listeners.get(key)?.forEach(update => update(uri));
     } catch (failure) {
       if (mounted.current && current.current === key) setError(`Could not change cover: ${String(failure)}`);
     } finally {

@@ -22,6 +22,8 @@ export function InstallSteps({ phase }: { phase: Phase }) {
   </ol>;
 }
 
+export const canRetryInstall = (game?: Game) => !!game && game.state === 'start-failed' && !game.gameExe;
+
 export function installPhase(installer: string, starting: boolean, game?: Game): Phase {
   if (game && (game.state === 'installer-exited' || game.gameExe)) return 'finish';
   if (starting || game) return 'install';
@@ -51,14 +53,14 @@ export function InstallProgress({ installer, name, runtime, game, starting }: {
         break;
       case 'installer-exited':
         status = 'Setup closed';
-        detail = 'Confirm the installed game’s .exe in its game card below. The installer exit alone does not verify the installation.';
+        detail = 'Choose and confirm the installed game’s .exe in the Finish step. The installer exit alone does not verify the installation.';
         break;
       case 'process-failed':
       case 'start-failed':
       case 'interrupted':
       case 'session-ended':
         status = 'Installer needs attention';
-        detail = game.message || 'Review the game card before trying again.';
+        detail = game.message || 'Review the current installation before trying again.';
         problem = true;
         break;
       default:

@@ -100,10 +100,20 @@ it('releases the update guard after installer failure and never restarts',async(
  await screen.findByRole('alert');await waitFor(()=>expect(invoke).toHaveBeenCalledWith('cancel_app_update'));
  expect(invoke.mock.calls.some(c=>c[0]==='restart_after_update')).toBe(false);
 });
+it('ends a declined administrator prompt and requires new approval for a retry',async()=>{
+ const value=update();value.downloadAndInstall.mockRejectedValue(new Error('Authentication failed or was cancelled'));
+ await findUpdate(value);fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Download & install 0.6.6'}));
+ expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('The administrator prompt was cancelled or authentication failed.'));
+ await waitFor(()=>expect(invoke).toHaveBeenCalledWith('cancel_app_update'));
+ expect(value.downloadAndInstall).toHaveBeenCalledTimes(1);
+ expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+ expect(invoke.mock.calls.some(c=>c[0]==='restart_after_update')).toBe(false);
+});
 it('reports relaunch failure without offering another action button or reinstalling',async()=>{
  invoke.mockImplementation(async(command:string)=>{if(command==='restart_after_update')throw new Error('Spawn failed');return [];});
  const value=await findUpdate();fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Download & install 0.6.6'}));
  await screen.findByText(/The update installed, but GameWeave could not open/);
+ expect(screen.getByRole('alert')).toHaveProperty('textContent',expect.stringContaining('or its AppImage file'));
  expect(value.downloadAndInstall).toHaveBeenCalledTimes(1);
  expect(screen.queryByRole('button',{name:/reopen|relaunch|restart/i})).toBeNull();
  expect(invoke.mock.calls.some(c=>c[0]==='cancel_app_update')).toBe(false);

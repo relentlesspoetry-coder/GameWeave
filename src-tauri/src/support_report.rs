@@ -130,7 +130,7 @@ pub fn save(app: tauri::AppHandle, token: u64, confirmed: bool) -> Result<Option
         redact(&mut value);let text=value.to_string();assert!(!text.contains("Bless"));assert!(!text.contains("/mnt"));assert!(!text.contains("secret"));assert_eq!(value["name"],"Game");assert_eq!(value["exit"],7);
     }
     #[test] fn windows_projection_excludes_arguments_messages_and_internal_ids() {
-        let game=windows_games::Game{id:"private-id".into(),name:"Game".into(),runtime_id:"/home/Bless/runtime".into(),game_exe:Some("/home/Bless/game.exe".into()),state:"game-exited".into(),exit_code:Some(7),message:"token=secret".into(),directory:"private".into(),windows_drive:"private".into(),prefix_directory:"/mnt/secret".into(),log_directory:Some("private".into()),launch_arguments:vec!["password=secret".into()],working_directory:None,last_launched_at:None};
+        let game=windows_games::Game{id:"private-id".into(),name:"Game".into(),runtime_id:"/home/Bless/runtime".into(),game_exe:Some("/home/Bless/game.exe".into()),installer_path:None,state:"game-exited".into(),exit_code:Some(7),message:"token=secret".into(),directory:"private".into(),windows_drive:"private".into(),prefix_directory:"/mnt/secret".into(),log_directory:Some("private".into()),launch_arguments:vec!["password=secret".into()],working_directory:None,last_launched_at:None};
         let mut value=windows_game(&game,Some("Wine"));redact(&mut value);let text=value.to_string();for secret in ["Bless","secret","private","password","token"]{assert!(!text.contains(secret));}assert_eq!(value["exitCode"],7);
     }
     #[test] fn steam_projection_keeps_findings_without_log_evidence_or_notes() {

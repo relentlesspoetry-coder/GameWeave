@@ -1227,69 +1227,22 @@ impl Update {
         install_cmd: &str,
         install_arg: &str,
     ) -> Result<()> {
-        // 1. First try using pkexec (graphical sudo prompt)
-        if let Ok(status) = std::process::Command::new("pkexec")
-            .arg(install_cmd)
-            .arg(install_arg)
-            .arg(pkg_path)
-            .status()
-            && status.success()
-        {
-            log::debug!("installed {pkg_path:?} with pkexec");
-            return Ok(());
-        }
-
-        // 2. Try zenity or kdialog for a graphical sudo experience
-        if let Ok(password) = self.get_password_graphically()
-            && self.install_with_sudo(pkg_path, &password, install_cmd, install_arg)?
-        {
-            log::debug!("installed {pkg_path:?} with GUI sudo");
-            return Ok(());
-        }
-
-        // 3. Final fallback: terminal sudo
-        let status = std::process::Command::new("sudo")
-            .arg(install_cmd)
-            .arg(install_arg)
-            .arg(pkg_path)
-            .status()?;
-
-        if status.success() {
-            log::debug!("installed {pkg_path:?} with sudo");
-            Ok(())
-        } else {
-            Err(Error::PackageInstallFailed)
-        }
-    }
-
-    fn get_password_graphically(&self) -> Result<String> {
-        // Try zenity first
-        let zenity_result = std::process::Command::new("zenity")
-            .args([
-                "--password",
-                "--title=Authentication Required",
-                "--text=Enter your password to install the update:",
-            ])
-            .output();
-
-        if let Ok(output) = zenity_result
-            && output.status.success()
-        {
-            return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
-        }
-
-        // Fall back to kdialog if zenity fails or isn't available
-        let kdialog_result = std::process::Command::new("kdialog")
-            .args(["--password", "Enter your password to install the update:"])
-            .output();
-
-        if let Ok(output) = kdialog_result
-            && output.status.success()
-        {
-            return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
-        }
-
-        Err(Error::AuthenticationFailed)
+        install_with_authorization(
+            || std::process::Command::new("pkexec").arg(install_cmd).arg(install_arg).arg(pkg_path)
+                .stdin(std::process::Stdio::null()).status(),
+            || std::process::Command::new("zenity")
+                .args(["--password", "--title=Authentication Required", "--text=Enter your password to install the update:"])
+                .output(),
+            || std::process::Command::new("kdialog")
+                .args(["--password", "Enter your password to install the update:"]).output(),
+            |password| self.install_with_sudo(pkg_path, password, install_cmd, install_arg),
+            || {
+                let status = std::process::Command::new("sudo").arg("-n")
+                    .arg(install_cmd).arg(install_arg).arg(pkg_path)
+                    .stdin(std::process::Stdio::null()).status()?;
+                if status.success() { Ok(()) } else { Err(Error::AuthenticationFailed) }
+            },
+        )
     }
 
     fn install_with_sudo(
@@ -1298,27 +1251,100 @@ impl Update {
         password: &str,
         install_cmd: &str,
         install_arg: &str,
-    ) -> Result<bool> {
+    ) -> Result<()> {
         use std::io::Write;
         use std::process::{Command, Stdio};
 
         let mut child = Command::new("sudo")
-            .arg("-S") // read password from stdin
+            .arg("-S")
             .arg(install_cmd)
             .arg(install_arg)
             .arg(pkg_path)
             .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .spawn()?;
 
-        if let Some(mut stdin) = child.stdin.take() {
-            // Write password to stdin
-            writeln!(stdin, "{password}")?;
-        }
-
+        let sent = child.stdin.take().ok_or_else(|| std::io::Error::other("sudo did not open its authentication input"))
+            .and_then(|mut stdin| writeln!(stdin, "{password}"));
         let status = child.wait()?;
-        Ok(status.success())
+        sent?;
+        if status.success() { Ok(()) } else { Err(Error::PackageInstallFailed) }
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))]
+fn install_with_authorization(
+    pkexec: impl FnOnce() -> std::io::Result<std::process::ExitStatus>,
+    zenity: impl FnOnce() -> std::io::Result<std::process::Output>,
+    kdialog: impl FnOnce() -> std::io::Result<std::process::Output>,
+    graphical_install: impl FnOnce(&str) -> Result<()>,
+    existing_sudo_authorization: impl FnOnce() -> Result<()>,
+) -> Result<()> {
+    match pkexec() {
+        Ok(status) if status.success() => return Ok(()),
+        Ok(status) if matches!(status.code(), Some(126 | 127)) => return Err(Error::AuthenticationFailed),
+        Ok(_) => return Err(Error::PackageInstallFailed),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {},
+        Err(e) => return Err(e.into()),
+    }
+
+    // A declined or failed prompt is terminal. Only a missing executable
+    // permits switching providers, and the final fallback cannot prompt.
+    let response = match zenity() {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => kdialog(),
+        result => result,
+    };
+    match response {
+        Ok(output) if output.status.success() => {
+            let password = std::str::from_utf8(&output.stdout)
+                .map_err(|_| Error::AuthenticationFailed)?
+                .trim_end_matches(['\r', '\n']);
+            graphical_install(password)
+        },
+        Ok(_) => Err(Error::AuthenticationFailed),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => existing_sudo_authorization(),
+        Err(e) => Err(e.into()),
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod linux_authorization_tests {
+    use super::*;
+    use std::{io, os::unix::process::ExitStatusExt, process::{ExitStatus, Output}};
+
+    fn status(code: i32) -> ExitStatus { ExitStatus::from_raw(code << 8) }
+    fn missing<T>() -> io::Result<T> { Err(io::Error::from(io::ErrorKind::NotFound)) }
+    fn result(code: i32, input: &[u8]) -> Output { Output {status: status(code), stdout: input.to_vec(), stderr: vec![]} }
+
+    #[test]
+    fn denied_pkexec_or_failed_install_never_prompts_again() {
+        for code in [126, 127, 1] {
+            let error = install_with_authorization(|| Ok(status(code)), || panic!("zenity"),
+                || panic!("kdialog"), |_| panic!("graphical install"), || panic!("sudo")).unwrap_err();
+            assert!(if code == 1 { matches!(error, Error::PackageInstallFailed) } else { matches!(error, Error::AuthenticationFailed) });
+        }
+    }
+
+    #[test]
+    fn graphical_cancel_is_terminal_for_either_provider() {
+        let error = install_with_authorization(missing, || Ok(result(1, b"")), || panic!("kdialog"),
+            |_| panic!("install"), || panic!("sudo")).unwrap_err();
+        assert!(matches!(error, Error::AuthenticationFailed));
+        let error = install_with_authorization(missing, missing, || Ok(result(1, b"")), |_| panic!("install"),
+            || panic!("sudo")).unwrap_err();
+        assert!(matches!(error, Error::AuthenticationFailed));
+    }
+
+    #[test]
+    fn missing_providers_fall_back_without_trimming_password_spaces() {
+        let error = install_with_authorization(missing, missing, || Ok(result(0, b" pass \n")),
+            |password| { assert_eq!(password, " pass "); Err(Error::PackageInstallFailed) },
+            || panic!("never retry a failed install")).unwrap_err();
+        assert!(matches!(error, Error::PackageInstallFailed));
+        assert!(install_with_authorization(missing, missing, missing, |_| panic!("install"), || Ok(())).is_ok());
+        assert!(install_with_authorization(|| Ok(status(0)), || panic!("zenity"),
+            || panic!("kdialog"), |_| panic!("install"), || panic!("sudo")).is_ok());
     }
 }
 

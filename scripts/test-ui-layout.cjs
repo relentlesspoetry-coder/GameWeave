@@ -51,6 +51,16 @@ let browser;
     windows.games.push(game);return game;
    }
    if(cmd==='list_windows_games')return windows;
+   if(cmd==='get_windows_game')return windows.games.find(game=>game.id===args.id)??null;
+   if(cmd==='test_game_launch'){
+    if(!args.confirmed)throw new Error('Steam launch fixture requires consent');
+    return await new Promise(resolve=>{
+     window.__PM_RESOLVE_LAUNCH=()=>resolve({
+      appId:args.appId,libraryPath:args.libraryPath,gameName:'Black Myth: Wukong',status:'launcher-error',
+      detail:'Steam rejected this fixture request.',observedSeconds:0,launcherExitCode:1,freshLog:false,findingCodes:[],manuallyConfirmed:false,
+     });
+    });
+   }
    if(cmd==='get_windows_launch_history')return {entries:[{id:'1-1700000000',kind:'game',runtime:'GE-Proton10-34',startedAt:1700000000000,endedAt:1700000065000,state:'process-failed',exitCode:7,message:'Game process ended.',summaries:['A Windows exception was recorded'],partialLogs:true},{id:'1-1600000000',kind:'installer',runtime:'Wine',startedAt:1600000000000,endedAt:1600000065000,state:'installer-exited',exitCode:0,message:'Setup process ended.',summaries:[],partialLogs:false}],warnings:[]};
    if(cmd==='get_auto_fix_control')return window.__PM_AUTO_CONTROL??{enabled:false,revision:0};
    if(cmd==='set_auto_fix_control'){window.__PM_AUTO_CONTROL={enabled:args.enabled,revision:args.revision};return window.__PM_AUTO_CONTROL;}
@@ -315,7 +325,9 @@ let browser;
  if(coverLayout.fit!=='cover'||coverLayout.padding!=='0px'||coverLayout.natural!==480)throw Error('Cover is not full bleed: '+JSON.stringify(coverLayout));
  results.push({name:'Landscape game cover',layout:'passed'});
  await page.getByRole('button',{name:'Add Black Myth: Wukong (Windows) to favorites',exact:true}).click();
- await page.getByRole('combobox',{name:'Filter games'}).selectOption('favorites');
+ const favoritesToggle=page.getByRole('button',{name:'Favorites',exact:true});
+ await favoritesToggle.click();
+ if(await favoritesToggle.getAttribute('aria-pressed')!=='true')throw Error('Favorites filter did not activate');
  await page.getByRole('combobox',{name:'Sort games'}).selectOption('recent');
  for(const [width,height] of [[1280,800],[390,844]]){
   await page.setViewportSize({width,height});
@@ -327,7 +339,8 @@ let browser;
  await page.getByRole('button',{name:'Launch game',exact:true}).waitFor();
  if(await page.getByRole('region',{name:'Add Windows game'}).count())throw Error('Focused Windows detail contains the installation form');
  await page.getByRole('button',{name:'Back to My Games',exact:true}).click();
- await page.getByRole('combobox',{name:'Filter games'}).selectOption('all');
+ if(await favoritesToggle.getAttribute('aria-pressed')!=='true')throw Error('Back to Library lost the favorites filter');
+ await favoritesToggle.click();
  await page.getByRole('combobox',{name:'Sort games'}).selectOption('name');
  await page.setViewportSize({width:1280,height:800});
  await page.screenshot({path:path.join(output,'unified-library.jpg'),fullPage:true,type:'jpeg',quality:80});
@@ -341,6 +354,18 @@ let browser;
   results.push({name:'Game detail: '+name,violations:detail.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:path.join(output,'detail-'+name.replaceAll(/[^a-zA-Z]+/g,'-')+'.jpg'),fullPage:true,type:'jpeg',quality:80});
  }
+ await page.getByRole('tab',{name:'Launch & repair',exact:true}).click();
+ await page.getByRole('checkbox',{name:'I approve enabling game logs and opening this game in Steam.',exact:true}).check();
+ await page.getByRole('button',{name:'Launch & Check Game',exact:true}).click();
+ await page.waitForFunction(()=>typeof window.__PM_RESOLVE_LAUNCH==='function');
+ await nav.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByText('Checking launch: Black Myth: Wukong…',{exact:true}).waitFor();
+ await page.evaluate(()=>window.__PM_RESOLVE_LAUNCH());
+ await page.getByText('Launch result: Black Myth: Wukong',{exact:true}).click();
+ await page.getByText('Steam rejected this fixture request.',{exact:true}).waitFor();
+ if(await page.getByRole('button',{name:'Yes, the game works',exact:true}).count())throw Error('A rejected Steam launch can be marked playable');
+ await page.getByRole('button',{name:'Dismiss result',exact:true}).click();
+ results.push({name:'Launch result survives navigation with accurate failure',layout:'passed'});
  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Install',exact:true}).click();
  await page.getByRole('combobox',{name:'Installed executable for Game Setup'}).selectOption('/home/player/Games/A New Game/Binaries/Win64/game.exe');
  await page.getByLabel('I trust the selected executable and approve saving this game.').check();

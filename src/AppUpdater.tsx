@@ -82,9 +82,12 @@ export function AppUpdater() {
       setApproved(false);
       if (completed) {
         setMessage('Update installed.');
-        setError('The update installed, but GameWeave could not open the new version. Open GameWeave from your applications menu.');
+        setError('The update installed, but GameWeave could not open the new version. Close this window, then reopen GameWeave from your applications menu or its AppImage file.');
       } else {
-        setMessage(''); setError(prepared ? 'Update did not complete. You can try again.' : String(e));
+        setMessage('');
+        const authEnded=prepared&&String(e).includes('Authentication failed or was cancelled');
+        setError(authEnded?'The administrator prompt was cancelled or authentication failed. Start the update again when you’re ready.':
+          prepared?'Update did not complete. You can try again.':String(e));
         if (prepared) { try { await invoke('cancel_app_update'); } catch { setError('Update stopped. Close and reopen GameWeave before continuing.'); } }
       }
       setTechnicalError(String(e));

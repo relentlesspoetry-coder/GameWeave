@@ -6,8 +6,8 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open }));
 const runtime={id:'proton:/fixture/proton',name:'Fixture Proton',kind:'proton'};
 const game={id:'123',name:'Fixture',runtimeId:runtime.id,gameExe:null,state:'installer-exited',exitCode:0,message:'Select and test the installed game',directory:'/managed/123',windowsDrive:'/managed/123/compatdata/pfx/drive_c',logDirectory:'/managed/123/logs/1'};
-beforeEach(()=>{vi.useFakeTimers();invoke.mockReset();open.mockReset();invoke.mockResolvedValue({runtimes:[runtime],games:[],warnings:[]});});
-afterEach(()=>{cleanup();vi.useRealTimers();});
+beforeEach(()=>{sessionStorage.clear();vi.useFakeTimers();invoke.mockReset();open.mockReset();invoke.mockResolvedValue({runtimes:[runtime],games:[],warnings:[]});});
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.useRealTimers();});
 const mount=async()=>{render(<WindowsGames/>);await act(async()=>{});};
 const click=async(name:string)=>{await act(async()=>{fireEvent.click(screen.getByRole('button',{name}));});};
 it('does not run a chosen installer until the user approves it',async()=>{
@@ -165,8 +165,9 @@ it('ignores a late log response from a previous run',async()=>{
  invoke.mockImplementation(async command=>command==='analyze_windows_game'?new Promise(r=>{resolve=r;}):{runtimes:[runtime],games:[current],warnings:[]});
  await mount();fireEvent.click(screen.getByText('Game settings and logs'));fireEvent.click(screen.getByRole('button',{name:'Read runtime logs'}));
  current={...current,logDirectory:'/managed/123/logs/2',state:'game-running'};
- await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
+ await act(async()=>{document.dispatchEvent(new Event('visibilitychange'));});
  await act(async()=>{resolve({findings:[{code:'old',title:'Late old error',recommendation:'Old recommendation'}],logs:[]});});
+ await click('Refresh');
  expect(screen.queryByText('Late old error')).toBeNull();
 });
 
@@ -200,7 +201,7 @@ it('reports actual installer phases and leaves activity indeterminate until setu
    const running={...game,state:'installer-running',exitCode:null};
    onlineGames=[running];return running;
   }
-  return command==='list_windows_games'?{runtimes:[runtime],games:onlineGames,warnings:[]}:null;
+  return command==='list_windows_games'?{runtimes:[runtime],games:onlineGames,warnings:[]}:command==='get_windows_game'?onlineGames[0]:null;
  });
  const phase = () => document.querySelector('.gw-install-steps [aria-current="step"]')?.textContent;
  await mount();expect(phase()).toContain('Select installer');
@@ -212,4 +213,85 @@ it('reports actual installer phases and leaves activity indeterminate until setu
  await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
  expect(phase()).toContain('Finish');expect(screen.getByText('Setup closed')).toBeTruthy();
  expect(screen.queryByRole('progressbar')).toBeNull();expect(screen.queryByRole('button',{name:'Launch game'})).toBeNull();
+});
+
+it('never polls the full library in an idle visible window or any status in a hidden window', async()=>{
+ let hidden=false;
+ vi.spyOn(document,'hidden','get').mockImplementation(()=>hidden);
+ let active=false;
+ invoke.mockImplementation(async (cmd:string) => cmd==='list_windows_games'
+   ? {runtimes:[runtime],games:active?[{...game,state:'installer-running'}]:[],warnings:[]}
+   : cmd==='get_windows_game'?{...game,state:'installer-running'}:null);
+ await mount();
+ await act(async()=>{await vi.advanceTimersByTimeAsync(15000);});
+ expect(invoke.mock.calls.filter(([cmd])=>cmd==='list_windows_games')).toHaveLength(1);
+ expect(invoke.mock.calls.some(([cmd])=>cmd==='get_windows_game')).toBe(false);
+ active=true; await click('Refresh');
+ hidden=true; document.dispatchEvent(new Event('visibilitychange'));
+ await act(async()=>{await vi.advanceTimersByTimeAsync(15000);});
+ expect(invoke.mock.calls.filter(([cmd])=>cmd==='list_windows_games')).toHaveLength(2);
+ expect(invoke.mock.calls.some(([cmd])=>cmd==='get_windows_game')).toBe(false);
+ hidden=false;
+ await act(async()=>{document.dispatchEvent(new Event('visibilitychange'));});
+ expect(invoke).toHaveBeenCalledWith('get_windows_game',{id:'123'});
+ expect(invoke.mock.calls.filter(([cmd])=>cmd==='list_windows_games')).toHaveLength(2);
+});
+
+it('finishes tracked setup directly outside a paginated list and requires manual-file consent', async()=>{
+ const libraryGames=Array.from({length:42},(_,i)=>({...game,id:`old-${i}`,name:`A game ${i}`,gameExe:'/games/old.exe',state:'ready-to-test'}));
+ let current={...game, name:'Zebra Setup', installerPath:'/Downloads/Zebra Setup.exe'};
+ invoke.mockImplementation(async(command:string,args:any)=>{
+   if(command==='install_windows_game')return {...current,state:'installer-running'};
+   if(command==='get_windows_game')return current;
+   if(command==='confirm_windows_installation'){current={...current,name:args.name,gameExe:args.path,state:'ready-to-test'};return current;}
+   if(command==='review_windows_installation')return {candidates:[],truncated:false};
+   return command==='list_windows_games' ? {runtimes:[runtime],games:current.gameExe?[...libraryGames,current]:libraryGames,warnings:[]} : null;
+ });
+ await mount();open.mockResolvedValueOnce('/Downloads/Zebra Setup.exe');await click('Choose installer (.exe)');
+ fireEvent.click(screen.getByRole('checkbox'));await click('Run installer');
+ await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
+ expect(screen.getByRole('region',{name:'Finish installation of Zebra Setup'}).closest('.gw-install-config')).toBeTruthy();
+ expect(screen.getByText('Page 1 of 2')).toBeTruthy();
+ expect(invoke.mock.calls.filter(([cmd])=>cmd==='list_windows_games')).toHaveLength(1);
+ open.mockResolvedValueOnce('/other/drive/zebra.exe');await click('Choose installed game (.exe)');
+ expect((screen.getByRole('button',{name:'Confirm game'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByLabelText('I trust the selected executable and approve saving this game.'));
+ await click('Confirm game');
+ expect(invoke).toHaveBeenCalledWith('confirm_windows_installation',{id:'123',name:'zebra',path:'/other/drive/zebra.exe',confirmed:true});
+ expect(screen.getByText('Game executable selected')).toBeTruthy();
+ expect(invoke.mock.calls.some(([cmd])=>cmd==='launch_windows_game')).toBe(false);
+});
+
+it('requires fresh consent to retry the saved installer and never creates a duplicate profile', async()=>{
+ let current={...game,installerPath:'/Downloads/setup.exe',state:'start-failed'};
+ invoke.mockImplementation(async(command:string)=>{
+   if(command==='install_windows_game')return current;
+   if(command==='retry_windows_installation'){current={...current,state:'installer-running'};return current;}
+   return command==='list_windows_games'?{runtimes:[runtime],games:[],warnings:[]}:null;
+ });
+ await mount();open.mockResolvedValueOnce('/Downloads/setup.exe');await click('Choose installer (.exe)');
+ fireEvent.click(screen.getByRole('checkbox'));await click('Run installer');
+ expect((screen.getByRole('button',{name:'Retry installer'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByLabelText(/I trust the saved installer/));await click('Retry installer');
+ expect(invoke).toHaveBeenCalledWith('retry_windows_installation',{id:'123',confirmed:true});
+ expect(invoke.mock.calls.filter(([cmd])=>cmd==='install_windows_game')).toHaveLength(1);
+ expect(screen.getByText('Installer running')).toBeTruthy();
+});
+
+it('returns to the same pending Finish step after the installer page remounts', async()=>{
+ let current={...game,state:'installer-running',installerPath:'/Downloads/setup.exe'};
+ let registered=false;
+ invoke.mockImplementation(async(command:string)=>{
+   if(command==='install_windows_game'){registered=true;return current;}
+   if(command==='review_windows_installation')return {candidates:[],truncated:false};
+   return command==='list_windows_games' ? {runtimes:[runtime],games:registered?[current]:[],warnings:[]} : null;
+ });
+ const view=render(<WindowsGames/>);await act(async()=>{});
+ open.mockResolvedValueOnce('/Downloads/setup.exe');await click('Choose installer (.exe)');fireEvent.click(screen.getByRole('checkbox'));await click('Run installer');
+ view.unmount();
+ current={...current,state:'installer-exited'};
+ await mount();
+ expect(screen.getByRole('region',{name:'Finish installation of Fixture'}).closest('.gw-install-config')).toBeTruthy();
+ expect(screen.getByText('Setup closed')).toBeTruthy();
+ expect(invoke.mock.calls.filter(([cmd])=>cmd==='install_windows_game')).toHaveLength(1);
 });

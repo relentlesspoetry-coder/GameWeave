@@ -36,7 +36,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 async function openGame(name: string) {
-  fireEvent.click(await screen.findByRole('button', { name: `Game settings for ${name} (Steam)` }));
+  fireEvent.click(await screen.findByRole('button', { name: `Open ${name} (Steam)` }));
   fireEvent.click(screen.getByRole('tab', { name: 'Proton', exact: true }));
   await screen.findByRole('button', { name: 'Automatically select GE-Proton' });
 }
@@ -62,7 +62,7 @@ it('does not show a late failure in another game with the same app ID', async ()
   render(<App/>); await openGame('Alpha'); apply();
   await waitFor(() => expect(invoke).toHaveBeenCalledWith('auto_select_proton', { appId: '123', libraryPath: '/fixture/Alpha', expectedTool: 'GE-Proton', confirmed: true }));
   back();
-  fireEvent.click(await screen.findByRole('button', { name: 'Game settings for Beta (Steam)' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Open Beta (Steam)' }));
   fireEvent.click(screen.getByRole('tab', { name: 'Proton', exact: true }));
   expect((screen.getByRole('button', { name: 'Selecting Proton…' }) as HTMLButtonElement).disabled).toBe(true);
   await act(async () => rejectSelection(new Error('Configuration unavailable')));
