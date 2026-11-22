@@ -114,9 +114,15 @@ let browser;
     const probe=document.createElement('span');
     probe.style.color=app.getPropertyValue('--gw-secondary').trim();
     button.append(probe);const secondary=getComputedStyle(probe).color;probe.remove();
+    // CSSOM may quantize gradient alpha to 8-bit before serializing it.
+    const shades=style=>[...style.backgroundImage.matchAll(/rgba\(([\d, ]+),\s*([\d.]+)\)/g)]
+      .filter(([,channels])=>channels.replace(/\s/g,'')===first.replace(/\s/g,''))
+      .map(([,,alpha])=>Number(alpha));
+    const hasRamp=(style,expected)=>{const found=shades(style);return found.length===expected.length&&
+      expected.every((alpha,i)=>Math.abs(found[i]-alpha)<=1/255);};
     return {smoothFade:app.backgroundAttachment.split(',').every(layer=>layer.trim()==='fixed')&&app.backgroundImage.includes('rgb(8, 11, 12)')&&
-      [0.035,0.078,0.144,0.211,0.263,0.29].every(alpha=>app.backgroundImage.includes(first+', '+alpha+')'))&&
-      [0.055,0.105,0.145].every(alpha=>sidebar.backgroundImage.includes(first+', '+alpha+')')),gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
+      hasRamp(app,[0.035,0.078,0.144,0.211,0.263,0.29])&&hasRamp(sidebar,[0.055,0.105,0.145]),
+      gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
       accent:icon.color===secondary,
       reflection:primary.backgroundImage.includes('radial-gradient')&&primary.boxShadow.includes('inset'),
       ribbon:secondStop===secondary&&ribbon.getAttribute('aria-hidden')==='true'&&getComputedStyle(ribbon).pointerEvents==='none', radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
