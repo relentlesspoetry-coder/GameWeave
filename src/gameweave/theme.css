@@ -1,6 +1,5 @@
 /* Scoped theme layer: legacy commands, updater identity, and storage paths remain unchanged. */
 .pm-app {
-  --gw-accent:#55ed68; --gw-secondary:#bbff4b; --gw-rgb:67,237,96;
   --gw-base:#07120e; --gw-panel:rgba(11,32,25,.60);
   --gw-blur:18px; --gw-sat:150%;
   --pm-accent:var(--gw-accent); --pm-muted:#c4d5ce; --pm-faint:#9db6ab;
@@ -12,18 +11,6 @@
     radial-gradient(ellipse at 6% 82%,rgba(var(--gw-rgb),.15),transparent 55%),
     linear-gradient(135deg,#060d0c,var(--gw-base) 65%,#040b0b);
   background-attachment:fixed;
-}
-.pm-app[data-gw-theme="cyan-purple"] {
-  --gw-accent:#17d5fa;--gw-secondary:#d95af8;--gw-rgb:25,206,247;
-  --gw-base:#121431;--gw-panel:rgba(22,24,63,.59);
-}
-.pm-app[data-gw-theme="red-orange-gold"] {
-  --gw-accent:#fc7040;--gw-secondary:#ffcd43;--gw-rgb:252,100,53;
-  --gw-base:#260e16;--gw-panel:rgba(44,20,23,.60);
-}
-.pm-app[data-gw-theme="teal-green-gold"] {
-  --gw-accent:#19d6cd;--gw-secondary:#ffd44e;--gw-rgb:25,212,199;
-  --gw-base:#071d1a;--gw-panel:rgba(9,38,34,.58);
 }
 .pm-app[data-gw-glass="subtle"]{--gw-blur:9px;--gw-sat:125%;}
 .pm-app[data-gw-glass="strong"]{--gw-blur:28px;--gw-sat:175%;}

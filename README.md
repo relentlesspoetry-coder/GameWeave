@@ -4,9 +4,9 @@
 
 Gameweave (formerly Proton Medic) helps Linux players diagnose game problems, manage installed Proton versions, and apply repairs with backups and rollback.
 
-[Existing signed releases](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest)
+[Download the latest signed release](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest)
 
-Existing releases retain their Proton Medic package name and signed update channel. The Gameweave UI does not move game files, profiles, or Proton prefixes.
+Gameweave retains the Proton Medic package name and signed update channel so existing installs can update in place. The Gameweave UI does not move game files, profiles, or Proton prefixes.
 
 ## Gameweave UI preview
 
@@ -42,7 +42,7 @@ These screenshots show the rendered interface with sample data. The installer sh
 - Load Steam covers from local artwork or Steam’s image servers, and choose a custom PNG or JPEG cover for any game.
 - Preview and export a local troubleshooting report with personal paths redacted by default.
 - Check for signed GitHub updates when requested.
-- Switch between four frosted-glass themes: Carbon Green, Cyan Purple, Red Orange Gold, and Teal Green Gold.
+- Switch between four frosted-glass themes: Carbon Green, Blue & Purple, Red & Orange, and Teal & Green.
 
 The update button appears at the top right on every page, with the installed version directly below it.
 
@@ -50,7 +50,7 @@ The update button appears at the top right on every page, with the installed ver
 
 ### Steam Deck / SteamOS
 
-1. Switch to **Desktop Mode** and download `proton-medic_0.6.43_amd64.AppImage` from [Releases](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest).
+1. Switch to **Desktop Mode** and download the latest `proton-medic_*_amd64.AppImage` from [Releases](https://github.com/relentlesspoetry-coder/Proton-medic/releases/latest).
 2. Move it to a permanent folder such as `~/Applications`. Game shortcuts refer to this location.
 3. In Dolphin, open **Properties → Permissions**, enable **Is executable**, then open the AppImage.
 
@@ -187,3 +187,5 @@ Proton Medic does not bypass anti-cheat or DRM. Launch status and log findings h
 - [v0.6.42 changes](RELEASE-v0.6.42.md)
 
 - [v0.6.43 changes](RELEASE-v0.6.43.md)
+
+- [v0.6.53 changes](RELEASE-v0.6.53.md)

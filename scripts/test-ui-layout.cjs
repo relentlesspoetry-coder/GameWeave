@@ -70,14 +70,146 @@ let browser;
  };
  await page.addInitScript(fixture);
  const results=[];
+ await page.setViewportSize({width:1440,height:900});
  await page.goto(address);
  const nav=page.getByRole('navigation',{name:'Main navigation'});
- await nav.getByRole('button',{name:'Settings',exact:true}).click();
- for(const [label,id] of [['Cyan Purple','cyan-purple'],['Red Orange Gold','red-orange-gold'],['Teal Green Gold','teal-green-gold'],['Carbon Green','carbon-green']]){
+ for(const [label,id] of [['Blue & Purple','cyan-purple'],['Red & Orange','red-orange-gold'],['Teal & Green','teal-green-gold'],['Carbon Green','carbon-green']]){
+  await nav.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('radio',{name:label,exact:true}).click();
   const logo=page.locator('img.gw-brand-logo:not([hidden])');
   await logo.waitFor({state:'visible'});
   if(await logo.getAttribute('src')!==`/branding/${id}.webp`||!(await logo.evaluate(node=>node.complete&&node.naturalWidth===2048)))throw Error('Incorrect or missing theme logo: '+id);
+  await nav.getByRole('button',{name:'Library',exact:true}).click();
+  await page.locator(`.pm-app[data-gw-theme="${id}"] .gw-library-detail`).waitFor();
+  const logoColors=await logo.evaluate((img,points)=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+    const context=canvas.getContext('2d',{willReadFrequently:true});
+    context.drawImage(img,0,0);
+    const expected=['--gw-rgb','--gw-tail-rgb','--gw-glint-rgb'].map(name=>
+      getComputedStyle(img.closest('.pm-app')).getPropertyValue(name).trim().split(',').map(Number));
+    // Canvas may round a channel when unpremultiplying the logo's alpha.
+    return points.every(([x,y],i)=>{
+      const pixel=context.getImageData(x,y,1,1).data;
+      return pixel[3]>=250&&expected[i].length===3&&expected[i].every((channel,j)=>Math.abs(channel-pixel[j])<=1);
+    });
+  },{
+    'carbon-green':[[912,391],[1729,610],[1250,510]],
+    'cyan-purple':[[541,200],[980,128],[1076,650]],
+    'red-orange-gold':[[874,119],[1086,508],[1096,91]],
+    'teal-green-gold':[[558,310],[1030,206],[1411,135]],
+  }[id]);
+  if(!logoColors)throw Error('Theme colors no longer match the shipped logo pixels: '+id);
+  const palette=await page.evaluate(()=>{
+    const app=getComputedStyle(document.querySelector('.pm-app'));
+    const button=document.querySelector('.gw-library-play-row .pm-button-primary');
+    const primary=getComputedStyle(button), icon=getComputedStyle(button.querySelector('svg'));
+    const normal=getComputedStyle(document.querySelector('.pm-nav-link:not(.active)'));
+    const rgb=key=>app.getPropertyValue(key).trim().split(/\s*,\s*/).join(', ');
+    const first=rgb('--gw-rgb'),second=rgb('--gw-tail-rgb');
+    const sidebar=getComputedStyle(document.querySelector('.pm-sidebar'));
+    const ribbon=document.querySelector('.gw-glass-ribbon-rail');
+    const secondStop=getComputedStyle(ribbon.querySelectorAll('stop')[2]).stopColor;
+    const hasBothHues=style=>style.backgroundImage.includes(first)&&style.backgroundImage.includes(second);
+    const probe=document.createElement('span');
+    probe.style.color=app.getPropertyValue('--gw-secondary').trim();
+    button.append(probe);const secondary=getComputedStyle(probe).color;probe.remove();
+    // CSSOM may quantize gradient alpha to 8-bit before serializing it.
+    const shades=(layer,hue)=>[...layer.matchAll(/rgba\(([\d, ]+),\s*([\d.]+)\)/g)]
+      .filter(([,channels])=>channels.replace(/\s/g,'')===hue.replace(/\s/g,''))
+      .map(([,,alpha])=>Number(alpha));
+    const hasRamp=(found,expected)=>found.length===expected.length&&
+      expected.every((alpha,i)=>Math.abs(found[i]-alpha)<=1/255);
+    const canvas=app.backgroundImage.split(/,\s*(?=(?:radial|linear)-gradient)/).at(-1);
+    return {fixed:app.backgroundAttachment.split(',').every(layer=>layer.trim()==='fixed'),
+      carbonFade:app.backgroundImage.includes('rgb(8, 11, 12)')&&
+      hasRamp(shades(canvas,first),[0.035,0.078,0.144,0.211,0.263,0.29])&&
+      hasRamp(shades(sidebar.backgroundImage,first),[0.055,0.105,0.145]),
+      twoToneFade:hasRamp(shades(canvas,first),[.44,.36,.29])&&hasRamp(shades(canvas,second),[.33,.42,.49])&&
+      hasRamp(shades(sidebar.backgroundImage,first),[.26,.17])&&hasRamp(shades(sidebar.backgroundImage,second),[.19,.32])&&
+      canvas.indexOf(first)<canvas.indexOf(second),
+      gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
+      accent:icon.color===secondary,
+      reflection:primary.backgroundImage.includes('radial-gradient')&&primary.boxShadow.includes('inset'),
+      ribbon:secondStop===secondary&&ribbon.getAttribute('aria-hidden')==='true'&&getComputedStyle(ribbon).pointerEvents==='none', radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
+  });
+  if(!palette.gradient||!palette.accent||!palette.reflection||!palette.ribbon||parseFloat(palette.radius)>9||!palette.glass.startsWith('blur(')||!palette.normalGlass.startsWith('blur('))throw Error('Inconsistent dual-color glass theme for '+id+': '+JSON.stringify(palette));
+  if(!palette.fixed||!(id==='carbon-green'?palette.carbonFade:palette.twoToneFade))throw Error('Theme canvas hue endpoints or sidebar gradient are missing: '+id);
+  const themeAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+  results.push({width:1440,name:'Theme: '+id,violations:themeAudit.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
+  await page.screenshot({path:path.join(output,`gameweave-theme-${id}.jpg`),type:'jpeg',quality:88});
+  await nav.getByRole('button',{name:'Settings',exact:true}).click();
+  await page.getByRole('radio',{name:label,exact:true}).waitFor({state:'visible'});
+  await page.screenshot({path:path.join(output,`gameweave-settings-${id}.png`)});
+
+  const current=page.locator('.gw-glass-ribbon-workspace .gw-ribbon-core');
+  const motion=await current.evaluate(path=>{
+    const animation=path.getAnimations().find(a=>a.animationName==='gw-current-flow');
+    if(!animation)return null;
+    animation.pause();
+    const ms=animation.effect.getTiming().duration;
+    return [0,ms/2,ms].map(time=>{animation.currentTime=time;return getComputedStyle(path).transform;});
+  });
+  if(!motion||motion[0]===motion[1]||motion[0]!==motion[2])throw Error('Current must travel and return smoothly: '+id);
+  await current.evaluate(path=>path.getAnimations().forEach(a=>a.play()));
+  const feathered=await page.locator('.gw-glass-ribbon-workspace').evaluate(svg=>{
+    const band=svg.querySelector('.gw-current-mask-band');
+    const stops=[...svg.querySelectorAll('#gw-feather-workspace stop')].map(stop=>Number(stop.getAttribute('stop-opacity')));
+    const animation=band.getAnimations().find(a=>a.animationName==='gw-current-travel');
+    if(!animation)return false;
+    animation.pause();
+    const ms=animation.effect.getTiming().duration;
+    const positions=[0,ms/4,ms/2,ms].map(time=>{
+      animation.currentTime=time;
+      return new DOMMatrix(getComputedStyle(band).transform).m41;
+    });
+    animation.play();
+    const edge=Number(band.getAttribute('width'))/2;
+    return stops.length>=7&&stops[0]===0&&stops.at(-1)===0&&stops[1]<stops[2]&&stops[2]<stops[3]&&
+      stops[3]>stops[4]&&stops[4]>stops[5]&&positions[0]+edge<0&&
+      positions[1]>positions[0]&&positions[2]>positions[1]&&Math.abs(positions[0]-positions[3])<.5;
+  });
+  if(!feathered)throw Error('Expected an offscreen-wrapping feathered light band: '+id);
+  if(id==='cyan-purple'){
+   const currents=page.locator('.gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer,.gw-current-mask-band)');
+   await page.locator('.gw-settings-theme-tile img').evaluateAll(images=>Promise.all(images.map(img=>img.decode())));
+   const setTime=ms=>currents.evaluateAll((paths,ms)=>paths.forEach(path=>{
+     for(const animation of path.getAnimations()){
+       if(animation.animationName==='gw-current-flow'||animation.animationName==='gw-current-travel'){
+         animation.pause();animation.currentTime=ms;
+       }
+     }
+   }),ms);
+   for(let frame=0;frame<48;frame++){
+    await setTime(frame*125);
+    await page.screenshot({path:path.join(output,'currents-blue-'+String(frame).padStart(2,'0')+'.png')});
+   }
+   await currents.evaluateAll(paths=>paths.forEach(path=>path.getAnimations().forEach(a=>a.play())));
+   const reduce=page.getByRole('checkbox',{name:/Reduce motion/i});
+   const currentSelector='.gw-glass-ribbon-workspace .gw-ribbon-core';
+   const awaitMotion=expected=>page.waitForFunction(({selector,expected})=>{
+    const path=document.querySelector(selector);
+    if(!path)return false;
+    const active=path.getAnimations().some(a=>a.animationName==='gw-current-flow'&&a.playState!=='idle');
+    const style=getComputedStyle(path);
+    const band=document.querySelector('.gw-glass-ribbon-workspace .gw-current-mask-band');
+    const layer=document.querySelector('.gw-glass-ribbon-workspace .gw-current-luminance');
+    const traveling=band.getAnimations().some(a=>a.animationName==='gw-current-travel'&&a.playState!=='idle');
+    return expected ? active&&traveling&&style.animationName==='gw-current-flow' :
+      !active&&!traveling&&getComputedStyle(layer).display==='none'&&style.animationName==='none'&&style.transform==='none';
+   },{selector:currentSelector,expected},{timeout:5000});
+   await reduce.check();
+   await page.locator('.pm-app[data-gw-motion="reduced"]').waitFor();
+   await awaitMotion(false);
+   await reduce.uncheck();
+   await page.locator('.pm-app[data-gw-motion="full"]').waitFor();
+   await awaitMotion(true);
+   await page.emulateMedia({reducedMotion:'reduce'});
+   await awaitMotion(false);
+   await page.emulateMedia({reducedMotion:'no-preference'});
+  }
+
+
  }
 
  for(const [width,height] of [[1440,900],[1200,800],[850,620],[1280,800],[390,844]]){
@@ -86,6 +218,7 @@ let browser;
    await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name,exact:true}).click();await page.waitForTimeout(100);
    const overflow=await page.evaluate(()=>({page:document.documentElement.scrollWidth>innerWidth+1,elements:[...document.querySelectorAll('main button,main input,main select,main summary')].filter(el=>{const r=el.getBoundingClientRect();return r.width&&r.height&&(r.right>innerWidth+1||r.left<0)}).map(el=>el.textContent.slice(0,90))}));
    if(overflow.page||overflow.elements.length)throw Error(JSON.stringify({width,name,overflow}));
+   if(width===1440&&name==='Settings')await page.screenshot({path:path.join(output,'gameweave-settings-parity.png')});
    if(width===1200||width===850)await page.screenshot({path:path.join(output,`${width}-${name.replaceAll(' ','-')}.jpg`),fullPage:true,type:'jpeg',quality:80});
    if(width===1200){const a=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();results.push({width,name,violations:a.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});}
    else results.push({width,name,layout:'passed'});
@@ -97,6 +230,34 @@ let browser;
   }
  }
  await page.setViewportSize({width:1440,height:900});
+ await nav.getByRole('button',{name:'Library',exact:true}).click();
+ await page.getByRole('button',{name:'Grid view',exact:true}).waitFor();
+ await page.locator('.gw-library-parity[data-library-view="grid"]').waitFor();
+ const desktopCards=await page.locator('.gw-library-parity[data-library-view="grid"] .pm-library-card').evaluateAll(cards=>cards.map(card=>card.getBoundingClientRect()));
+ if(desktopCards.length!==8||desktopCards[7].bottom>901)throw Error('Expected two complete Library poster rows at 1440×900: '+JSON.stringify({count:desktopCards.length,last:desktopCards[7]}));
+ const libraryTitle=await page.getByRole('heading',{name:'My Library',exact:true}).boundingBox();
+ const gameInspector=await page.getByRole('complementary',{name:'Selected game'}).boundingBox();
+ if(!libraryTitle||!gameInspector||Math.abs(libraryTitle.y-gameInspector.y)>18||gameInspector.x<=libraryTitle.x+libraryTitle.width)throw Error('Selected game panel must align with the Library heading on desktop: '+JSON.stringify({libraryTitle,gameInspector}));
+ await page.screenshot({path:path.join(output,'gameweave-library-parity.png')});
+ const desktopCover=page.getByRole('button',{name:'Open Black Myth: Wukong (Steam)',exact:true});
+ await desktopCover.hover();
+ const coverCenterClear=await desktopCover.evaluate(el=>{
+  const box=el.getBoundingClientRect();
+  return el.contains(document.elementFromPoint(box.left+box.width/2,box.top+box.height/2));
+ });
+ if(!coverCenterClear)throw Error('Desktop Library quick actions must not intercept the center of a poster');
+ const desktopCard=desktopCover.locator('xpath=ancestor::article');
+ await desktopCover.focus();
+ await page.mouse.move(1,1);
+ const quickActionsAvailable=await desktopCard.locator('.pm-library-card-actions').evaluate(el=>getComputedStyle(el).pointerEvents==='auto');
+ if(!quickActionsAvailable)throw Error('Desktop Library quick actions must also reveal with keyboard focus');
+ await desktopCover.blur();
+ results.push({width:1440,name:'Library poster density and quick actions',layout:'passed'});
+ await page.getByRole('button',{name:'List view',exact:true}).click();
+ await page.locator('.gw-library-parity[data-library-view="list"]').waitFor();
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Library list view overflow');
+ await page.getByRole('button',{name:'Grid view',exact:true}).click();
+
  await nav.getByRole('button',{name:'Install',exact:true}).click();
  await page.getByRole('button',{name:'Choose installer (.exe)',exact:true}).click();
  await page.getByRole('checkbox',{name:/approve running it/i}).check();
@@ -107,7 +268,11 @@ let browser;
  await page.screenshot({path:path.join(output,'gameweave-installer-running.png')});
  await page.reload();
  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Tools',exact:true}).click();
-  await page.getByRole('button',{name:/^Proton Manager/}).click();
+ await page.setViewportSize({width:1440,height:900});
+ await page.getByRole('combobox',{name:'Game for tools'}).selectOption({label:'Black Myth: Wukong (Steam)'});
+ await page.getByRole('complementary',{name:'Selected game'}).getByRole('heading',{name:'Black Myth: Wukong'}).waitFor();
+ await page.screenshot({path:path.join(output,'gameweave-tools-parity.png')});
+ await page.getByRole('button',{name:'Proton Manager',exact:true}).click();
  await page.getByRole('button',{name:'Load latest releases',exact:true}).click();
  await page.getByLabel('I approve downloading and installing this GE-Proton release.',{exact:true}).check();
  await page.getByRole('button',{name:'Download and install',exact:true}).click();
@@ -167,7 +332,9 @@ let browser;
  await page.setViewportSize({width:1280,height:800});
  await page.screenshot({path:path.join(output,'unified-library.jpg'),fullPage:true,type:'jpeg',quality:80});
  await page.setViewportSize({width:1200,height:800});await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Library',exact:true}).click();await page.getByRole('button',{name:'Open Black Myth: Wukong (Steam)',exact:true}).click();await page.screenshot({path:path.join(output,'game-detail.jpg'),fullPage:true,type:'jpeg',quality:80});
- for(const name of ['Diagnostics','Proton','Launch & repair','Backups & details']) {
+ await page.getByRole('tab',{name:'Overview',exact:true}).waitFor();
+ await page.screenshot({path:path.join(output,'gameweave-details-overview.png')});
+ for(const name of ['Overview','Diagnostics','Proton','Launch & repair','Backups & details']) {
   await page.getByRole('tab',{name,exact:true}).click();
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Game panel overflow: '+name);
   const detail=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
@@ -214,7 +381,7 @@ let browser;
  await touch.addInitScript(fixture);await touch.goto(address);await touch.getByRole('textbox',{name:'Search games'}).waitFor();
  for(const name of ['Library','Install','Tools','Settings']){
   await touch.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name,exact:true}).tap();
-  const small=await touch.evaluate(()=>[...document.querySelectorAll('button,summary')].filter(el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&(r.width<43.5||r.height<43.5)}).map(el=>el.textContent));
+  const small=await touch.evaluate(()=>[...document.querySelectorAll('button,summary')].filter(el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&(r.width<43.5||r.height<43.5)}).map(el=>({label:el.getAttribute('aria-label')||el.textContent?.trim(),width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})));
   if(small.length)throw Error('Small Deck touch targets on '+name+': '+JSON.stringify({small,media:await touch.evaluate(()=>({coarse:matchMedia('(any-pointer: coarse)').matches,size:getComputedStyle(document.documentElement).getPropertyValue('--pm-control-size')}))}));
   if(await touch.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Deck touch layout overflow: '+name);
   results.push({name:'Deck touch: '+name,layout:'passed'});

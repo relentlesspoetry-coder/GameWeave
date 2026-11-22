@@ -1,0 +1,213 @@
+/* Graphite canvas, tapered light ribbons, and edge-lit desktop glass.
+   The first hue tints the glass; the second illuminates the polished edge. */
+.pm-app {
+  --gw-glass-panel:linear-gradient(145deg,rgba(var(--gw-rgb),.075),transparent 38%,rgba(var(--gw-tail-rgb),.055)),rgba(6,12,15,.77);
+  /* Two distinct optical layers: a curved reflected highlight above, a
+     translucent two-color body below. Keep the label area dark. */
+  --gw-glass-reflection:radial-gradient(ellipse 115% 146% at 17% -92%,#f7ffff65 0%,#efffff24 77%,#d5fff118 78%,transparent 79%);
+  --gw-glass-hot-reflection:radial-gradient(ellipse 115% 146% at 17% -91%,rgba(var(--gw-glint-rgb),.72) 0%,rgba(var(--gw-glint-rgb),.18) 76%,rgba(var(--gw-glint-rgb),.12) 78%,transparent 79%);
+  --gw-glass-fill:
+    radial-gradient(ellipse 31% 58% at 8% -19%,#efffff95,transparent 81%),
+    var(--gw-glass-reflection),
+    linear-gradient(175deg,rgba(var(--gw-rgb),.15),transparent 50%,rgba(var(--gw-tail-rgb),.135)),
+    rgba(6,14,16,.67);
+  --gw-glass-active:
+    radial-gradient(ellipse 34% 52% at 6% -10%,#fafff3ca,transparent 86%),
+    var(--gw-glass-hot-reflection),
+    linear-gradient(180deg,rgba(var(--gw-rgb),.55) 0%,rgba(var(--gw-rgb),.09) 43%,rgba(var(--gw-rgb),.14) 72%,rgba(var(--gw-tail-rgb),.58)),
+    linear-gradient(118deg,rgba(var(--gw-rgb),.18),rgba(var(--gw-tail-rgb),.15)),
+    rgba(3,10,11,.88);
+  --gw-radius:9px;
+  position:relative;isolation:isolate;
+  --pm-accent:var(--gw-secondary);
+  background:
+    radial-gradient(ellipse at 92% 2%,rgba(var(--gw-rgb),.075),transparent 49%),
+    radial-gradient(ellipse at 12% 93%,rgba(var(--gw-tail-rgb),.055),transparent 53%),
+    linear-gradient(132deg,#111617,#080d0f 47%,#0a1011);
+}
+
+/* Carbon Green fades from carbon black to the green sampled from its logo.
+   Anchor the field to the viewport so it remains visible on long pages. */
+.pm-app[data-gw-theme="carbon-green"] {
+  background:
+    radial-gradient(ellipse at 13% 99%,rgba(var(--gw-tail-rgb),.045),rgba(var(--gw-tail-rgb),.022) 31%,transparent 66%),
+    linear-gradient(145deg,#080b0c 0%,#080d0e 14%,#091210 28%,
+      rgba(var(--gw-rgb),.035) 40%,rgba(var(--gw-rgb),.078) 52%,
+      rgba(var(--gw-rgb),.144) 64%,rgba(var(--gw-rgb),.211) 76%,
+      rgba(var(--gw-rgb),.263) 88%,rgba(var(--gw-rgb),.29) 100%),
+    #080e0e;
+  background-attachment:fixed;
+}
+.pm-app .pm-sidebar {
+  background:linear-gradient(142deg,#11191b,#060d0f 50%,#0a1315);
+  border-right-color:#d1e3e126;
+}
+.pm-app[data-gw-theme="carbon-green"] .pm-sidebar {
+  background:linear-gradient(154deg,#090d0f 0%,#080e0f 23%,#081310 47%,
+    rgba(var(--gw-rgb),.055) 64%,rgba(var(--gw-rgb),.105) 83%,rgba(var(--gw-rgb),.145) 100%),#070d0d;
+}
+/* For the two-tone themes both logo hues belong to the canvas, not just
+   the controls. The dark base keeps the glass and text readable at either end. */
+.pm-app:is([data-gw-theme="cyan-purple"],[data-gw-theme="red-orange-gold"],[data-gw-theme="teal-green-gold"]) {
+  background:
+    radial-gradient(ellipse at 22% 6%,rgba(var(--gw-rgb),.11),transparent 54%),
+    radial-gradient(ellipse at 92% 70%,rgba(var(--gw-tail-rgb),.12),transparent 59%),
+    linear-gradient(132deg,rgba(var(--gw-rgb),.44) 0%,rgba(var(--gw-rgb),.36) 21%,
+      rgba(var(--gw-rgb),.29) 37%,rgba(var(--gw-tail-rgb),.33) 64%,
+      rgba(var(--gw-tail-rgb),.42) 82%,rgba(var(--gw-tail-rgb),.49) 100%),
+    #070a15;
+  background-attachment:fixed;
+}
+.pm-app:is([data-gw-theme="cyan-purple"],[data-gw-theme="red-orange-gold"],[data-gw-theme="teal-green-gold"]) .pm-sidebar {
+  background:linear-gradient(154deg,rgba(var(--gw-rgb),.26),rgba(var(--gw-rgb),.17) 39%,
+    rgba(var(--gw-tail-rgb),.19) 70%,rgba(var(--gw-tail-rgb),.32)),#070a12;
+}
+.pm-app .pm-sidebar::before { display:none; }
+.gw-glass-ribbon { pointer-events:none; position:absolute; inset:0 0 auto; width:100%; }
+.gw-glass-ribbon-rail { height:100%; z-index:-1; }
+.gw-glass-ribbon-workspace { height:min(490px,61vh); z-index:-1; opacity:.40; }
+.gw-ribbon-core,.gw-ribbon-fill { --gw-ribbon-spectrum:url(#gw-spectrum-workspace); }
+.gw-glass-ribbon-rail :is(.gw-ribbon-core,.gw-ribbon-fill) { --gw-ribbon-spectrum:url(#gw-spectrum-rail); }
+.gw-ribbon-core {
+  fill:none;stroke:var(--gw-ribbon-spectrum);stroke-width:1.45px;
+  filter:drop-shadow(0 0 4px var(--gw-accent)) drop-shadow(0 0 16px var(--gw-accent));
+}
+.gw-ribbon-fill { fill:var(--gw-ribbon-spectrum); opacity:.17; }
+/* A feathered light field sweeps across the painted current. No moving
+   stroke has a dash or endpoint on screen: the ribbon is lit through an
+   alpha mask that is transparent at both edges. */
+.gw-glass-ribbon-workspace {
+  --gw-current-x:13px; --gw-current-y:21px; --gw-current-angle:1.3deg; --gw-current-period:12s;
+  --gw-current-travel:10s; --gw-current-echo:-5s; --gw-current-from:-320px; --gw-current-to:1780px;
+}
+.gw-glass-ribbon-rail {
+  --gw-current-x:-6px; --gw-current-y:17px; --gw-current-angle:-1.5deg; --gw-current-period:15s;
+  --gw-current-travel:9s; --gw-current-echo:-4.5s; --gw-current-from:-98px; --gw-current-to:372px;
+}
+.gw-current-luminance { display:none; }
+.gw-current-tracer { fill:none; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.gw-current-wash { stroke:var(--gw-secondary); stroke-width:13; opacity:.60; filter:blur(7px); }
+.gw-current-core { stroke:var(--gw-accent); stroke-width:4; opacity:.72; filter:blur(2.3px); }
+@media(prefers-reduced-motion:no-preference) {
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer) {
+    transform-box:view-box;
+    transform-origin:center;
+    animation:gw-current-flow var(--gw-current-period) ease-in-out infinite;
+  }
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon .gw-current-luminance { display:block; }
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon .gw-current-mask-band {
+    animation:gw-current-travel var(--gw-current-travel) linear infinite;
+  }
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon .gw-current-mask-echo {
+    animation-delay:var(--gw-current-echo);
+  }
+}
+.pm-app[data-gw-motion="reduced"] .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer,.gw-current-mask-band) {
+  animation:none!important;
+  transform:none;
+}
+@media(prefers-reduced-motion:reduce) {
+  .pm-app .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer,.gw-current-mask-band) {
+    animation:none!important;
+    transform:none;
+  }
+}
+@keyframes gw-current-flow {
+  0%,100% { transform:translate(0,0) rotate(0deg); }
+  50% { transform:translate(var(--gw-current-x),var(--gw-current-y)) rotate(var(--gw-current-angle)); }
+}
+/* Both bands wrap outside the clipping viewport. */
+@keyframes gw-current-travel {
+  from { transform:translateX(var(--gw-current-from)); }
+  to { transform:translateX(var(--gw-current-to)); }
+}
+@media(max-width:540px) {
+  .gw-glass-ribbon-rail { display:none; }
+  .gw-glass-ribbon-workspace { opacity:.23; }
+}
+.pm-app .gw-system-card { background:var(--gw-glass-panel); }
+.pm-app .gw-library-layout .pm-library-card,
+.pm-app .gw-tools-card,
+.pm-app :is(.pm-section,.gw-library-detail,.pm-windows-game,.pm-metrics),
+.pm-app .gw-settings-pane,
+.pm-app .gw-settings-preferences {
+  background:var(--gw-glass-panel);
+}
+.pm-app .gw-library-layout .pm-library-card.gw-selected {
+  border-color:var(--gw-secondary);
+  box-shadow:0 0 0 1px var(--gw-secondary),0 0 12px rgba(var(--gw-rgb),.39),inset 0 1px rgba(255,255,255,.14);
+}
+
+.pm-app :is(.pm-main,.pm-sidebar) :is(button,.gw-settings-preferences a,.gw-settings-demo-actions span,.gw-settings-demo-filters span,summary):not(.pm-library-art,.gw-library-select,.gw-settings-theme-tile,.pm-button-danger) {
+  border-radius:var(--gw-radius);
+  border-color:rgba(211,241,239,.34);
+  background:var(--gw-glass-fill);
+  box-shadow:inset 0 1px 1px #eefbf287,inset 0 -1px rgba(var(--gw-tail-rgb),.39),inset 1px 0 #d6f0ec22,0 2px 6px #0009;
+  -webkit-backdrop-filter:blur(var(--gw-blur)) saturate(var(--gw-sat));
+  backdrop-filter:blur(var(--gw-blur)) saturate(var(--gw-sat));
+}
+.pm-app :is(.pm-main,.pm-sidebar) :is(.pm-library-sources,.pm-detail-tabs,.gw-tools-view,.gw-view-modes) {
+  background:transparent; border-color:transparent; box-shadow:none;
+  -webkit-backdrop-filter:none; backdrop-filter:none;
+  gap:5px;
+}
+.pm-app :is(.pm-main,.pm-sidebar) :is(
+  .pm-nav-link.active,.pm-button-primary,.gw-tools-button.primary,
+  button[aria-pressed="true"],button[aria-selected="true"],.gw-settings-nav-active,
+  .gw-settings-demo-actions span:first-child,.gw-settings-demo-filters span:first-child
+):not(.gw-library-select,.pm-library-art,.gw-settings-theme-tile) {
+  background:var(--gw-glass-active);
+  border-color:var(--gw-secondary);
+  box-shadow:inset 0 1px 2px #ffffffbf,inset 1px -1px 2px rgba(var(--gw-glint-rgb),.76),inset 0 -3px 5px rgba(var(--gw-tail-rgb),.79),0 0 11px rgba(var(--gw-rgb),.47);
+  color:#fbfcff;
+}
+.pm-app :is(.pm-main,.pm-sidebar) :is(button,.gw-settings-preferences a,summary):not(
+  :disabled,.pm-library-art,.gw-library-select,.gw-settings-theme-tile,.pm-button-danger
+):is(:hover,:focus-visible) { border-color:var(--gw-secondary); }
+.pm-app :is(.pm-main,.pm-sidebar) :is(.pm-nav-link.active,.pm-button-primary,.gw-tools-button.primary,
+  button[aria-pressed="true"],button[aria-selected="true"],.gw-settings-nav-active
+):not(:disabled,.pm-library-art,.gw-library-select,.gw-settings-theme-tile)>svg { color:var(--gw-secondary); }
+.pm-app .pm-sidebar .pm-nav .pm-nav-link:not(.active,:hover,:focus-visible) {
+  box-shadow:none;
+  border-color:transparent;
+  background:linear-gradient(119deg,rgba(var(--gw-rgb),.028),rgba(var(--gw-tail-rgb),.022)),transparent;
+}
+.pm-app .gw-library-actions .gw-library-action,
+.pm-app .gw-tools-actions .gw-tools-tile:not(:disabled) {
+  border-color:rgba(220,248,239,.42);
+  box-shadow:inset 0 1px 1px #f1fff992,inset 0 -1px rgba(var(--gw-tail-rgb),.42),0 2px 4px #0009;
+}
+.pm-app .gw-library-actions .gw-library-action:is(:hover,:focus-visible),
+.pm-app .gw-tools-actions .gw-tools-tile:not(:disabled):is(:hover,:focus-visible) { border-color:var(--gw-secondary); }
+.pm-app .gw-library-actions .gw-library-action>svg:first-child { color:#effdf6; }
+.pm-app .gw-settings-theme-tile { border-radius:var(--gw-radius); }
+.pm-app .gw-settings-theme-tile:is(:hover,[aria-checked="true"]) {
+  border-color:var(--gw-secondary); box-shadow:inset 0 1px rgba(var(--gw-tail-rgb),.52);
+}
+.pm-app .gw-settings-check { border-radius:4px; background:var(--gw-secondary); }
+.pm-app .gw-active-theme { color:var(--gw-secondary); }
+.pm-app .gw-settings-appearance :is(input[type="checkbox"],input[type="range"]) { accent-color:var(--gw-secondary); }
+.pm-app .gw-settings-demo {
+  background:radial-gradient(ellipse at 16% 17%,rgba(var(--gw-rgb),.29),transparent 67%),
+    linear-gradient(126deg,rgba(var(--gw-rgb),.24),rgba(var(--gw-tail-rgb),.18)),#0c1316;
+}
+@media(forced-colors:active) {
+  .gw-glass-ribbon { display:none; }
+  .pm-app :is(.pm-main,.pm-sidebar) :is(button[aria-pressed="true"],button[aria-selected="true"],.pm-nav-link.active,.gw-settings-theme-tile[aria-checked="true"]) {
+    border-color:Highlight; outline:1px solid Highlight; outline-offset:-2px;
+  }
+}
+
+/* The reference keeps the rail substantial and the working area compact. */
+@media(min-width:1350px) {
+  .pm-app .pm-sidebar { flex-basis:clamp(220px,15.4vw,263px); }
+  .pm-app .pm-brand { padding-bottom:18px; }
+  .pm-app .gw-brand-logo { max-height:91px; }
+  .pm-app .pm-nav-link { min-height:49px; font-size:15px; }
+  .pm-app .pm-nav-group { gap:6px; }
+  .pm-app .pm-nav { padding-bottom:19px; border-bottom:1px solid #e6fffa1c; }
+  .pm-app .gw-tools-header { min-height:57px; margin-bottom:9px; }
+  .pm-app .pm-workspace-header { margin-bottom:5px; }
+  .pm-app .pm-update-actions { flex-direction:row; align-items:center; gap:7px; }
+  .pm-app .pm-header-version { white-space:nowrap; }
+}
