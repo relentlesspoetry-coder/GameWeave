@@ -115,26 +115,64 @@ let browser;
     probe.style.color=app.getPropertyValue('--gw-secondary').trim();
     button.append(probe);const secondary=getComputedStyle(probe).color;probe.remove();
     // CSSOM may quantize gradient alpha to 8-bit before serializing it.
-    const shades=style=>[...style.backgroundImage.matchAll(/rgba\(([\d, ]+),\s*([\d.]+)\)/g)]
-      .filter(([,channels])=>channels.replace(/\s/g,'')===first.replace(/\s/g,''))
+    const shades=(layer,hue)=>[...layer.matchAll(/rgba\(([\d, ]+),\s*([\d.]+)\)/g)]
+      .filter(([,channels])=>channels.replace(/\s/g,'')===hue.replace(/\s/g,''))
       .map(([,,alpha])=>Number(alpha));
-    const hasRamp=(style,expected)=>{const found=shades(style);return found.length===expected.length&&
-      expected.every((alpha,i)=>Math.abs(found[i]-alpha)<=1/255);};
-    return {smoothFade:app.backgroundAttachment.split(',').every(layer=>layer.trim()==='fixed')&&app.backgroundImage.includes('rgb(8, 11, 12)')&&
-      hasRamp(app,[0.035,0.078,0.144,0.211,0.263,0.29])&&hasRamp(sidebar,[0.055,0.105,0.145]),
+    const hasRamp=(found,expected)=>found.length===expected.length&&
+      expected.every((alpha,i)=>Math.abs(found[i]-alpha)<=1/255);
+    const canvas=app.backgroundImage.split(/,\s*(?=(?:radial|linear)-gradient)/).at(-1);
+    return {fixed:app.backgroundAttachment.split(',').every(layer=>layer.trim()==='fixed'),
+      carbonFade:app.backgroundImage.includes('rgb(8, 11, 12)')&&
+      hasRamp(shades(canvas,first),[0.035,0.078,0.144,0.211,0.263,0.29])&&
+      hasRamp(shades(sidebar.backgroundImage,first),[0.055,0.105,0.145]),
+      twoToneFade:hasRamp(shades(canvas,first),[.44,.36,.29])&&hasRamp(shades(canvas,second),[.33,.42,.49])&&
+      hasRamp(shades(sidebar.backgroundImage,first),[.26,.17])&&hasRamp(shades(sidebar.backgroundImage,second),[.19,.32])&&
+      canvas.indexOf(first)<canvas.indexOf(second),
       gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
       accent:icon.color===secondary,
       reflection:primary.backgroundImage.includes('radial-gradient')&&primary.boxShadow.includes('inset'),
       ribbon:secondStop===secondary&&ribbon.getAttribute('aria-hidden')==='true'&&getComputedStyle(ribbon).pointerEvents==='none', radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
   });
   if(!palette.gradient||!palette.accent||!palette.reflection||!palette.ribbon||parseFloat(palette.radius)>9||!palette.glass.startsWith('blur(')||!palette.normalGlass.startsWith('blur('))throw Error('Inconsistent dual-color glass theme for '+id+': '+JSON.stringify(palette));
-  if(!palette.smoothFade)throw Error('Theme must keep the graduated carbon-to-logo fade across the viewport and sidebar: '+id);
+  if(!palette.fixed||!(id==='carbon-green'?palette.carbonFade:palette.twoToneFade))throw Error('Theme canvas hue endpoints or sidebar gradient are missing: '+id);
   const themeAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   results.push({width:1440,name:'Theme: '+id,violations:themeAudit.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:path.join(output,`gameweave-theme-${id}.jpg`),type:'jpeg',quality:88});
   await nav.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('radio',{name:label,exact:true}).waitFor({state:'visible'});
   await page.screenshot({path:path.join(output,`gameweave-settings-${id}.png`)});
+
+  const current=page.locator('.gw-glass-ribbon-workspace .gw-ribbon-core');
+  const motion=await current.evaluate(path=>{
+    const animation=path.getAnimations().find(a=>a.animationName==='gw-current-flow');
+    if(!animation)return null;
+    animation.pause();
+    const ms=animation.effect.getTiming().duration;
+    return [0,ms/2,ms].map(time=>{animation.currentTime=time;return getComputedStyle(path).transform;});
+  });
+  if(!motion||motion[0]===motion[1]||motion[0]!==motion[2])throw Error('Current must travel and return smoothly: '+id);
+  await current.evaluate(path=>path.getAnimations().forEach(a=>a.play()));
+  if(id==='cyan-purple'){
+   const currents=page.locator('.gw-glass-ribbon .gw-ribbon-core, .gw-glass-ribbon .gw-ribbon-fill');
+   const setPhase=phase=>currents.evaluateAll((paths,phase)=>paths.forEach(path=>{
+     const animation=path.getAnimations().find(a=>a.animationName==='gw-current-flow');
+     if(animation){animation.pause();animation.currentTime=animation.effect.getTiming().duration*phase;}
+   }),phase);
+   for(let frame=0;frame<16;frame++){
+    await setPhase(frame/16);
+    await page.screenshot({path:path.join(output,'currents-blue-'+String(frame).padStart(2,'0')+'.png')});
+   }
+   await currents.evaluateAll(paths=>paths.forEach(path=>path.getAnimations().forEach(a=>a.play())));
+   const reduce=page.getByRole('checkbox',{name:/Reduce motion/i});
+   await reduce.check();
+   if(await current.evaluate(path=>path.getAnimations().length))throw Error('Reduce motion must stop the currents');
+   await reduce.uncheck();
+   if(!await current.evaluate(path=>path.getAnimations().some(a=>a.animationName==='gw-current-flow')))throw Error('Currents must restart after disabling Reduce motion');
+   await page.emulateMedia({reducedMotion:'reduce'});
+   if(await current.evaluate(path=>path.getAnimations().length))throw Error('System reduced motion must stop the currents');
+   await page.emulateMedia({reducedMotion:'no-preference'});
+  }
+
 
  }
 

@@ -46,25 +46,21 @@
   background:linear-gradient(154deg,#090d0f 0%,#080e0f 23%,#081310 47%,
     rgba(var(--gw-rgb),.055) 64%,rgba(var(--gw-rgb),.105) 83%,rgba(var(--gw-rgb),.145) 100%),#070d0d;
 }
-/* Keep the same carbon foundation and gradual rise as Carbon Green.
-   The secondary logo hue is a softer wash, not a second bright edge. */
+/* For the two-tone themes both logo hues belong to the canvas, not just
+   the controls. The dark base keeps the glass and text readable at either end. */
 .pm-app:is([data-gw-theme="cyan-purple"],[data-gw-theme="red-orange-gold"],[data-gw-theme="teal-green-gold"]) {
   background:
-    radial-gradient(ellipse at 13% 99%,rgba(var(--gw-tail-rgb),.095) 0%,rgba(var(--gw-tail-rgb),.050) 29%,
-      rgba(var(--gw-tail-rgb),.017) 49%,transparent 71%),
-    linear-gradient(145deg,#080b0c 0%,#090d0f 14%,#0a1012 28%,
-      rgba(var(--gw-rgb),.035) 40%,rgba(var(--gw-rgb),.078) 52%,
-      rgba(var(--gw-rgb),.144) 64%,rgba(var(--gw-rgb),.211) 76%,
-      rgba(var(--gw-rgb),.263) 88%,rgba(var(--gw-rgb),.29) 100%),
-    #080e0e;
+    radial-gradient(ellipse at 22% 6%,rgba(var(--gw-rgb),.11),transparent 54%),
+    radial-gradient(ellipse at 92% 70%,rgba(var(--gw-tail-rgb),.12),transparent 59%),
+    linear-gradient(132deg,rgba(var(--gw-rgb),.44) 0%,rgba(var(--gw-rgb),.36) 21%,
+      rgba(var(--gw-rgb),.29) 37%,rgba(var(--gw-tail-rgb),.33) 64%,
+      rgba(var(--gw-tail-rgb),.42) 82%,rgba(var(--gw-tail-rgb),.49) 100%),
+    #070a15;
   background-attachment:fixed;
 }
 .pm-app:is([data-gw-theme="cyan-purple"],[data-gw-theme="red-orange-gold"],[data-gw-theme="teal-green-gold"]) .pm-sidebar {
-  background:
-    radial-gradient(ellipse at 9% 100%,rgba(var(--gw-tail-rgb),.050),transparent 66%),
-    linear-gradient(154deg,#090d0f 0%,#080e0f 23%,#091115 47%,
-      rgba(var(--gw-rgb),.055) 64%,rgba(var(--gw-rgb),.105) 83%,rgba(var(--gw-rgb),.145) 100%),
-    #070d0d;
+  background:linear-gradient(154deg,rgba(var(--gw-rgb),.26),rgba(var(--gw-rgb),.17) 39%,
+    rgba(var(--gw-tail-rgb),.19) 70%,rgba(var(--gw-tail-rgb),.32)),#070a12;
 }
 .pm-app .pm-sidebar::before { display:none; }
 .gw-glass-ribbon { pointer-events:none; position:absolute; inset:0 0 auto; width:100%; }
@@ -77,6 +73,21 @@
   filter:drop-shadow(0 0 4px var(--gw-accent)) drop-shadow(0 0 16px var(--gw-accent));
 }
 .gw-ribbon-fill { fill:var(--gw-ribbon-spectrum); opacity:.17; }
+/* Move only the painted curves, inside their fixed SVG viewports. There is
+   no layout change, scroll overflow, or flashing between loop endpoints. */
+.gw-glass-ribbon-workspace { --gw-current-x:14px; --gw-current-y:17px; --gw-current-angle:1.1deg; --gw-current-period:9s; }
+.gw-glass-ribbon-rail { --gw-current-x:-7px; --gw-current-y:18px; --gw-current-angle:-1.4deg; --gw-current-period:11s; }
+@media(prefers-reduced-motion:no-preference) {
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill) {
+    transform-box:view-box;
+    transform-origin:center;
+    animation:gw-current-flow var(--gw-current-period) ease-in-out infinite;
+  }
+}
+@keyframes gw-current-flow {
+  0%,100% { transform:translate(0,0) rotate(0deg); }
+  50% { transform:translate(var(--gw-current-x),var(--gw-current-y)) rotate(var(--gw-current-angle)); }
+}
 @media(max-width:540px) {
   .gw-glass-ribbon-rail { display:none; }
   .gw-glass-ribbon-workspace { opacity:.23; }
