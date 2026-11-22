@@ -12,7 +12,11 @@ import sys
 import tempfile
 
 
+from desktop_branding import check_desktop
+
+
 def check(appdir):
+    check_desktop(appdir)
     gtk = ctypes.CDLL(str(appdir / 'usr/lib/libgtk-3.so.0'))
     gtk.gtk_init_check(None, None)  # Registers GTK resources; no display required.
     pixbuf = ctypes.CDLL(str(appdir / 'usr/lib/libgdk_pixbuf-2.0.so.0'))

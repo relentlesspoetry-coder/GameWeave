@@ -14,8 +14,8 @@ pub fn activity() -> Result<Activity, String> {
 fn activity_in(state: &RwLock<Phase>) -> Result<RwLockReadGuard<'_, Phase>, String> {
     let guard = state.read().map_err(|_| "Update state unavailable")?;
     match *guard {
-        Phase::Updating => return Err("An app update is in progress. Wait for Proton Medic to reopen.".into()),
-        Phase::Closing => return Err("Proton Medic is closing. Choose Keep Open to continue working.".into()),
+        Phase::Updating => return Err("An app update is in progress. Wait for GameWeave to reopen.".into()),
+        Phase::Closing => return Err("GameWeave is closing. Choose Keep Open to continue working.".into()),
         Phase::Idle => {},
     }
     Ok(guard)
@@ -38,7 +38,7 @@ fn begin_in(state: &RwLock<Phase>, idle: impl FnOnce() -> Result<(), String>) ->
 }
 pub fn cancel() -> Result<(), String> {
     let mut updating = UPDATING.write().map_err(|_| "Update state unavailable")?;
-    if *updating == Phase::Closing { return Err("Proton Medic is closing, not updating".into()); }
+    if *updating == Phase::Closing { return Err("GameWeave is closing, not updating".into()); }
     UPDATE_LEASE.lock().map_err(|_|"Update lock unavailable")?.take();
     REOPEN_ATTEMPTED.store(false, Ordering::Release);
     *updating = Phase::Idle; Ok(())
@@ -48,7 +48,7 @@ pub fn cancel() -> Result<(), String> {
 pub fn prepare_close() -> Result<(), String> {
     close_in(&UPDATING, REOPEN_ATTEMPTED.load(Ordering::Acquire), || {
         crate::windows_games::require_update_idle()?;
-        if !crate::windows_games::update_stop::active()?.is_empty() { return Err("Windows games or installers launched through Proton Medic are still running.".into()); }
+        if !crate::windows_games::update_stop::active()?.is_empty() { return Err("Windows games or installers launched through GameWeave are still running.".into()); }
         crate::workflow::require_update_idle()?;
         crate::game_logging::require_update_idle()?;
         if crate::proton_manager::busy() { return Err("Wait for the Proton download to finish or cancel it first.".into()); }

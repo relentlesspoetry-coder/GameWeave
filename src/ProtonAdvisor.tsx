@@ -27,19 +27,19 @@ export function ProtonAdvisor({ advice, loading, applying, message, onApply }: {
         <button type="button" className="pm-button pm-button-primary" disabled={applying} onClick={onApply}>
           <RefreshCw size={17} className={applying ? 'pm-spin' : ''}/>{applying ? 'Selecting Proton…' : `Automatically select ${pick}`}
         </button>
-        <p>Proton Medic will configure this version for the game. Steam must be closed. Your current configuration is backed up first.</p>
+        <p>GameWeave will configure this version for the game. Steam must be closed. Your current configuration is backed up first.</p>
       </div>}
       {message && <div className="pm-auto-message" role="status">{message}</div>}
       {canSwitch && <details className="pm-advisor-steps">
         <summary>How to try {pick} in Steam <ChevronDown size={17}/></summary>
-        <ol><li>Open Steam and select this game in your Library.</li><li>Open <strong>Properties → Compatibility</strong>.</li><li>Check <strong>Force the use of a specific Steam Play compatibility tool</strong>.</li><li>Select <strong>{pick}</strong> and try launching the game.</li><li>If it still fails, return to Proton Medic and analyze the new log.</li></ol>
+        <ol><li>Open Steam and select this game in your Library.</li><li>Open <strong>Properties → Compatibility</strong>.</li><li>Check <strong>Force the use of a specific Steam Play compatibility tool</strong>.</li><li>Select <strong>{pick}</strong> and try launching the game.</li><li>If it still fails, return to GameWeave and analyze the new log.</li></ol>
       </details>}
       <details className="pm-advisor-steps pm-advisor-secondary"><summary>Other installed options and technical details <ChevronDown size={17}/></summary>
         <p>Currently selected in Steam: {advice.configuredTool ?? 'No per-game override found'}</p>
         <p>Detected alternatives: {advice.alternatives.length ? advice.alternatives.join(', ') : 'None found'}</p>
         <p>Evidence identifiers: {advice.evidence.length ? advice.evidence.join(', ') : 'No matching error signatures'}</p>
       </details>
-      <p className="pm-advisor-disclaimer"><Info size={15}/> Proton Medic chooses the candidate; game launch is required to verify it works. Automatic changes are opt-in and backed up.</p>
+      <p className="pm-advisor-disclaimer"><Info size={15}/> GameWeave chooses the candidate; game launch is required to verify it works. Automatic changes are opt-in and backed up.</p>
     </>}
   </section>;
 }

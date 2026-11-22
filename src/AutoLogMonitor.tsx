@@ -54,7 +54,7 @@ export function AutoLogMonitor({ enabled, onToggle, expanded = true, controlPend
     </div>);
   if (!expanded && !error && !updates.length) return null;
   return <section className="pm-section" aria-label="Automatic game log reader">
-    <div className="pm-section-heading"><div><h2>{expanded ? 'Log monitoring' : 'Game log updates'}</h2>{expanded && <p>Checks new Proton logs while Proton Medic is open.</p>}</div></div>
+    <div className="pm-section-heading"><div><h2>{expanded ? 'Log monitoring' : 'Game log updates'}</h2>{expanded && <p>Checks new Proton logs while GameWeave is open.</p>}</div></div>
     {expanded && <><label className="pm-auto-toggle"><input type="checkbox" disabled={controlPending} checked={enabled} onChange={e => { if (!controlPending) onToggle(e.target.checked); }}/><span><strong>Automatically apply supported fixes</strong><small>Backs up each change and waits for Steam to close. Games are never launched automatically.</small></span></label>
     <details className="pm-update-details"><summary>How log monitoring works</summary><p>Reads logs every 10 seconds. Automatic fixes use new findings and make at most one attempt per game per app session. Use Diagnose this game or a launch test to enable logging.</p></details></>}
     {error && <p role="alert" className="pm-repair-danger">{error}</p>}

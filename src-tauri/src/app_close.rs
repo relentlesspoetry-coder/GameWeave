@@ -19,12 +19,12 @@ fn confirmation(sessions: &[Session]) -> String {
         let name: String = s.name.chars().take(70).collect();
         format!("• {}{} ({})", name, if s.name.chars().count()>70 { "…" } else { "" }, s.kind)
     }).collect::<Vec<_>>().join("\n");
-    if sessions.len()>6 { names.push_str(&format!("\n• And {} more active Proton Medic sessions", sessions.len()-6)); }
-    format!("Force quit Proton Medic and stop all {} active games and installers?\n\n{names}\n\nUnsaved game progress will be lost. An interrupted installation may need to be repaired or run again. Processes that do not close will be forcibly stopped.\n\nOnly these Proton Medic sessions and their child processes will be stopped. Steam and unrelated apps will stay open.", sessions.len())
+    if sessions.len()>6 { names.push_str(&format!("\n• And {} more active GameWeave sessions", sessions.len()-6)); }
+    format!("Force quit GameWeave and stop all {} active games and installers?\n\n{names}\n\nUnsaved game progress will be lost. An interrupted installation may need to be repaired or run again. Processes that do not close will be forcibly stopped.\n\nOnly these GameWeave sessions and their child processes will be stopped. Steam and unrelated apps will stay open.", sessions.len())
 }
 fn show_error(window: &tauri::Window, reason: &str) {
-    window.dialog().message(format!("Proton Medic stayed open.\n\n{reason}\n\nFinish or cancel that operation, then try closing again."))
-        .title("Could not close Proton Medic").kind(MessageDialogKind::Warning).show(|_| {});
+    window.dialog().message(format!("GameWeave stayed open.\n\n{reason}\n\nFinish or cancel that operation, then try closing again."))
+        .title("Could not close GameWeave").kind(MessageDialogKind::Warning).show(|_| {});
 }
 
 pub(crate) fn request(window: tauri::Window, original_reason: String) {
@@ -34,7 +34,7 @@ pub(crate) fn request(window: tauri::Window, original_reason: String) {
             let reservation = app_update::reserve_force_close()?;
             let sessions = update_stop::force_active()?;
             if sessions.iter().any(|session| !session.can_stop) {
-                return Err("An active game was started by an older Proton Medic version. Close it manually first; its processes cannot be safely force-stopped by this version.".to_owned());
+                return Err("An active game was started by an older GameWeave version. Close it manually first; its processes cannot be safely force-stopped by this version.".to_owned());
             }
             Ok((reservation, sessions))
         })();
@@ -51,7 +51,7 @@ pub(crate) fn request(window: tauri::Window, original_reason: String) {
             return;
         }
         let message = confirmation(&sessions);
-        window.dialog().message(message).title("Force quit Proton Medic?")
+        window.dialog().message(message).title("Force quit GameWeave?")
             .kind(MessageDialogKind::Warning)
             .buttons(MessageDialogButtons::OkCancelCustom("Force Quit".into(), "Keep Open".into()))
             .show(move |confirmed| {
@@ -81,7 +81,7 @@ pub(crate) fn request(window: tauri::Window, original_reason: String) {
         let session=Session { id: "1-2".into(), run_id: "1-3".into(), name: "Long game title ".repeat(100), kind: "game".into(), can_stop: true };
         let text=confirmation(&vec![session;17]);
         assert!(text.contains("all 17 active"));
-        assert!(text.contains("11 more active Proton Medic sessions"));
+        assert!(text.contains("11 more active GameWeave sessions"));
         assert!(text.chars().count()<1200);
     }
     #[test] fn repeated_close_requests_do_not_open_duplicate_confirmations() {

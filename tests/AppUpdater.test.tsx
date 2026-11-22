@@ -25,7 +25,7 @@ it('requires approval before downloading or installing',async()=>{
   const value=await findUpdate();expect(value.downloadAndInstall).not.toHaveBeenCalled();
   expect((screen.getByRole('button',{name:'Download & install 0.6.6'}) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Download & install 0.6.6'}));
-  await screen.findByText(/Update installed. Reopening Proton Medic/);expect(value.downloadAndInstall).toHaveBeenCalledTimes(1);
+  await screen.findByText(/Update installed. Reopening GameWeave/);expect(value.downloadAndInstall).toHaveBeenCalledTimes(1);
   await waitFor(()=>expect(invoke).toHaveBeenCalledWith('restart_after_update',{version:'0.6.6'}));
 });
 it('does not call a failed check up to date',async()=>{
@@ -103,7 +103,7 @@ it('releases the update guard after installer failure and never restarts',async(
 it('reports relaunch failure without offering another action button or reinstalling',async()=>{
  invoke.mockImplementation(async(command:string)=>{if(command==='restart_after_update')throw new Error('Spawn failed');return [];});
  const value=await findUpdate();fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Download & install 0.6.6'}));
- await screen.findByText(/The update installed, but Proton Medic could not open/);
+ await screen.findByText(/The update installed, but GameWeave could not open/);
  expect(value.downloadAndInstall).toHaveBeenCalledTimes(1);
  expect(screen.queryByRole('button',{name:/reopen|relaunch|restart/i})).toBeNull();
  expect(invoke.mock.calls.some(c=>c[0]==='cancel_app_update')).toBe(false);
