@@ -4,10 +4,11 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { UnifiedLibrary, libraryItems, steamLibraryKey, windowsLibraryKey, type LibraryFilter, type LibrarySource, type LibrarySort } from '../src/UnifiedLibrary';
 import type { Game } from '../src/types';
 import type { Game as WindowsGame } from '../src/WindowsGames';
-const {invoke}=vi.hoisted(()=>({invoke:vi.fn()}));vi.mock('@tauri-apps/api/core',()=>({invoke}));
+const {invoke,open}=vi.hoisted(()=>({invoke:vi.fn(),open:vi.fn()}));vi.mock('@tauri-apps/plugin-dialog',()=>({open}));vi.mock('@tauri-apps/api/core',()=>({invoke}));
 const steam:Game={appId:'100',name:'Shared name',libraryPath:'/Steam/A',installPath:'/Steam/A/game',installPathExists:true,manifestPath:'/manifest',prefixPath:'/prefix',prefixExists:true,buildId:null,lastPlayedAt:1700000000000};
 const windows:WindowsGame={id:'123',name:'Shared name',runtimeId:'wine',gameExe:'/game.exe',state:'game-exited',exitCode:0,message:'Ended',directory:'/managed/123',windowsDrive:'/prefix/drive_c',prefixDirectory:'/prefix',logDirectory:'/logs/1',lastLaunchedAt:1700000060000};
-const onSteam=vi.fn(),onWindows=vi.fn();let windowsData={games:[windows],removedGames:[{...windows,id:'999',name:'Hidden game'}],warnings:[],runtimes:[]};
+const runtime={id:'wine',name:'System Wine',kind:'wine'};
+const onSteam=vi.fn(),onWindows=vi.fn();let windowsData={games:[windows],removedGames:[{...windows,id:'999',name:'Hidden game'}],warnings:[],runtimes:[runtime]};
 function Harness({games=[steam],refreshKey=0,initialPage=0}:{games?:Game[];refreshKey?:number;initialPage?:number}){
  const [page,onPageChange]=useState(initialPage);
  const [query,onQuery]=useState('');const [filter,onFilter]=useState<LibraryFilter>('all');const [source,onSource]=useState<LibrarySource>('all');const [sort,onSort]=useState<LibrarySort>('name');
@@ -15,7 +16,7 @@ function Harness({games=[steam],refreshKey=0,initialPage=0}:{games?:Game[];refre
 }
 const choose=async(name:string,value:string)=>{await act(async()=>{if(name==='Game source')fireEvent.click(within(screen.getByRole('group',{name})).getByRole('button',{name:value==='all'?'All':value==='steam'?'Steam':'Windows',exact:true}));else fireEvent.change(screen.getByRole('combobox',{name}),{target:{value}});});};
 const mount=async()=>{render(<Harness/>);await act(async()=>{});};
-beforeEach(()=>{vi.useFakeTimers();vi.spyOn(document,'hidden','get').mockReturnValue(false);localStorage.clear();invoke.mockReset();onSteam.mockReset();onWindows.mockReset();windowsData={games:[windows],removedGames:[{...windows,id:'999',name:'Hidden game'}],warnings:[],runtimes:[]};invoke.mockImplementation(async(command:string)=>command==='list_windows_games'?windowsData:null);});
+beforeEach(()=>{vi.useFakeTimers();vi.spyOn(document,'hidden','get').mockReturnValue(false);localStorage.clear();invoke.mockReset();open.mockReset();onSteam.mockReset();onWindows.mockReset();windowsData={games:[windows],removedGames:[{...windows,id:'999',name:'Hidden game'}],warnings:[],runtimes:[runtime]};invoke.mockImplementation(async(command:string)=>command==='list_windows_games'?windowsData:null);});
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.useRealTimers();});
 it('combines identical names without merging source identities or showing removed profiles',async()=>{
  await mount();expect(screen.getByRole('button',{name:'Open Shared name (Steam)'})).toBeTruthy();expect(screen.getByRole('button',{name:'Open Shared name (Windows)'})).toBeTruthy();expect(screen.queryByText('Hidden game')).toBeNull();
@@ -27,14 +28,14 @@ it('filters by source and searches both game collections',async()=>{
  await choose('Game source','all');fireEvent.change(screen.getByRole('textbox',{name:'Search games'}),{target:{value:'100'}});expect(screen.getByRole('button',{name:'Open Shared name (Steam)'})).toBeTruthy();expect(screen.queryByRole('button',{name:'Open Shared name (Windows)'})).toBeNull();
 });
 it('persists favorites independently of names and keeps Steam library copies distinct',async()=>{
- await mount();fireEvent.click(screen.getByRole('button',{name:'Add Shared name (Windows) to favorites'}));await choose('Filter games','favorites');expect(screen.queryByRole('button',{name:'Open Shared name (Steam)'})).toBeNull();
- cleanup();windowsData.games=[{...windows,name:'Renamed game'}];await mount();await choose('Filter games','favorites');expect(screen.getByRole('button',{name:'Open Renamed game (Windows)'})).toBeTruthy();
+ await mount();fireEvent.click(screen.getByRole('button',{name:'Add Shared name (Windows) to favorites'}));fireEvent.click(screen.getByRole('button',{name:'Favorites',exact:true}));expect(screen.queryByRole('button',{name:'Open Shared name (Steam)'})).toBeNull();
+ cleanup();windowsData.games=[{...windows,name:'Renamed game'}];await mount();fireEvent.click(screen.getByRole('button',{name:'Favorites',exact:true}));expect(screen.getByRole('button',{name:'Open Renamed game (Windows)'})).toBeTruthy();
  expect(steamLibraryKey(steam)).not.toBe(steamLibraryKey({...steam,libraryPath:'/Steam/B'}));expect(windowsLibraryKey(windows)).not.toBe(steamLibraryKey(steam));
 });
 it('sorts known recent dates first and unknown dates last',async()=>{
  render(<Harness games={[steam,{...steam,appId:'200',name:'A unknown',lastPlayedAt:null}]}/>);await act(async()=>{});await choose('Sort games','recent');
  const names=within(screen.getByRole('region',{name:'Unified game library'})).getAllByRole('button',{name:/^Open /}).map(e=>e.getAttribute('aria-label'));
- expect(names).toEqual(['Open Shared name (Windows)','Open Shared name (Steam)','Open A unknown (Steam)']);expect(screen.getByText(/Last launched/)).toBeTruthy();
+ expect(names).toEqual(['Open Shared name (Windows)','Open Shared name (Steam)','Open A unknown (Steam)']);expect(screen.getAllByText(/Last launched/)[0]).toBeTruthy();
 });
 it('treats future and invalid timestamps as unknown',()=>{
  expect(libraryItems([{...steam,lastPlayedAt:Infinity},{...steam,lastPlayedAt:Date.now()+999999}],[{...windows,lastLaunchedAt:-1}]).every(item=>item.recent===0)).toBe(true);
@@ -50,7 +51,7 @@ it('reports storage failure without pretending the favorite was saved',async()=>
  await mount();vi.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw new Error('full');});fireEvent.click(screen.getByRole('button',{name:'Add Shared name (Steam) to favorites'}));expect(screen.getByRole('alert').textContent).toContain('Could not save');expect(screen.getByRole('button',{name:'Add Shared name (Steam) to favorites'}).getAttribute('aria-pressed')).toBe('false');
 });
 it('keeps both collections visible during a Windows refresh failure and recovers',async()=>{
- await mount();invoke.mockRejectedValueOnce(new Error('temporary failure'));await act(async()=>{vi.advanceTimersByTime(5000);});expect(screen.getByRole('alert').textContent).toContain('temporary failure');expect(screen.getAllByRole('button',{name:/^Open /})).toHaveLength(2);
+ await mount();invoke.mockRejectedValueOnce(new Error('temporary failure'));await act(async()=>{vi.advanceTimersByTime(30000);});expect(screen.getByRole('alert').textContent).toContain('temporary failure');expect(screen.getAllByRole('button',{name:/^Open /})).toHaveLength(2);
  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Retry Windows library'}));});expect(screen.queryByRole('alert')).toBeNull();
 });
 it('ignores an older Windows response after the scan refresh key changes',async()=>{
@@ -68,7 +69,8 @@ it('keeps loaded games while hidden and refreshes immediately when shown',async(
  await act(async()=>{await vi.advanceTimersByTimeAsync(30000);});
  expect(inventoryCalls()).toBe(1);expect(screen.getByRole('button',{name:'Open Shared name (Windows)'})).toBeTruthy();
  await visibility(false);expect(inventoryCalls()).toBe(2);
- await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});expect(inventoryCalls()).toBe(3);
+ await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});expect(inventoryCalls()).toBe(2);
+ await act(async()=>{await vi.advanceTimersByTimeAsync(25000);});expect(inventoryCalls()).toBe(3);
  cleanup();await act(async()=>{await vi.advanceTimersByTimeAsync(10000);});expect(inventoryCalls()).toBe(3);
 });
 it('does not scan on a hidden mount and ignores the response from before hiding',async()=>{
@@ -90,7 +92,7 @@ it('opens Steam launch consent without launching and requires approval before th
  expect(invoke.mock.calls.some(call=>call[0]==='test_game_launch')).toBe(false);
  const launch=within(panel).getByRole('button',{name:'Launch & Check Game'});
  expect((launch as HTMLButtonElement).disabled).toBe(true);
- fireEvent.click(within(panel).getByRole('checkbox',{name:'I approve opening this game through Steam'}));
+ fireEvent.click(within(panel).getByRole('checkbox',{name:'I approve enabling game logs and opening this game in Steam.'}));
  await act(async()=>{fireEvent.click(launch);});
  expect(invoke).toHaveBeenCalledWith('test_game_launch',{appId:'100',libraryPath:'/Steam/A',seconds:10,confirmed:true});
 });
@@ -126,7 +128,7 @@ it('keeps the Steam launch panel mounted while an observation is pending',async(
  await mount();let finish!:(value:unknown)=>void;
  invoke.mockImplementation((command:string)=>command==='test_game_launch'?new Promise(resolve=>{finish=resolve;}):Promise.resolve(command==='list_windows_games'?windowsData:null));
  fireEvent.click(screen.getByRole('button',{name:'Play Shared name (Steam)'}));
- fireEvent.click(screen.getByRole('checkbox',{name:'I approve opening this game through Steam'}));
+ fireEvent.click(screen.getByRole('checkbox',{name:'I approve enabling game logs and opening this game in Steam.'}));
  fireEvent.click(screen.getByRole('button',{name:'Launch & Check Game'}));
  expect((screen.getByRole('button',{name:'Close launch options'}) as HTMLButtonElement).disabled).toBe(true);
  expect((screen.getByRole('button',{name:'Play Shared name (Steam)'}) as HTMLButtonElement).disabled).toBe(true);
@@ -157,7 +159,7 @@ it('selects a Windows game in the contextual panel without navigating or duplica
  expect(within(panel).getByText('Windows game')).toBeTruthy();
  expect(within(panel).getByText('Ready to launch')).toBeTruthy();
  expect(onWindows).not.toHaveBeenCalled();
- fireEvent.click(within(panel).getByRole('button',{name:/Configure Game/}));
+ fireEvent.click(within(panel).getByRole('button',{name:/View game details/}));
  expect(onWindows).toHaveBeenCalledWith(windows);
 });
 
@@ -200,4 +202,85 @@ it('switches grid and list without losing selection, and toggles the Favorites p
  expect(screen.getByRole('button',{name:'Open Shared name (Steam)'})).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Grid view'}));
  expect(view.container.querySelector('[data-library-view="grid"]')).toBeTruthy();
+});
+
+it('fills the inspector from the visible page and focuses new pagination results',async()=>{
+ windowsData.games=[];
+ const games=Array.from({length:41},(_,i)=>({...steam,appId:String(i),name:`Title ${String(i).padStart(2,'0')}`}));
+ render(<Harness games={games}/>);await act(async()=>{});
+ expect(screen.getByRole('complementary',{name:'Selected game: Title 00'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Next'}));
+ expect(screen.getByRole('complementary',{name:'Selected game: Title 40'})).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Select Title 40 (Steam)'}).getAttribute('aria-pressed')).toBe('true');
+ expect(document.activeElement).toBe(screen.getByRole('group',{name:'Game list results'}));
+});
+
+it('opens all matching recorded activity, leaves default sort alone and returns focus',async()=>{
+ const recent=Array.from({length:5},(_,i)=>({...steam,appId:String(i),name:`Title ${i}`,lastPlayedAt:1700000000000+i*1000}));
+ const noRecord={...steam,appId:'99',name:'No Record',lastPlayedAt:null};
+ windowsData.games=[];
+ render(<Harness games={[...recent,noRecord]}/>);await act(async()=>{});
+ fireEvent.click(screen.getByRole('button',{name:'View all'}));
+ const heading=screen.getByRole('heading',{name:'Recently played games'});
+ expect(document.activeElement).toBe(heading);
+ expect(screen.getAllByRole('button',{name:/^Open /}).map(element=>element.getAttribute('aria-label'))).toEqual([4,3,2,1,0].map(i=>`Open Title ${i} (Steam)`));
+ expect((screen.getByRole('combobox',{name:'Sort games'}) as HTMLSelectElement).value).toBe('name');
+ fireEvent.click(screen.getByRole('button',{name:'Show all matching games'}));
+ expect(screen.getByRole('button',{name:'Open No Record (Steam)'})).toBeTruthy();
+ expect(document.activeElement).toBe(screen.getByRole('button',{name:'View all'}));
+});
+
+it('restores focus after closing Steam options and falls back to search after the trigger disappears',async()=>{
+ await mount();
+ const trigger=screen.getByRole('button',{name:'Play Shared name (Steam)'});
+ trigger.focus();
+ fireEvent.click(trigger);
+ const close=screen.getByRole('button',{name:'Close launch options'});
+ close.focus();fireEvent.click(close);
+ expect(document.activeElement).toBe(trigger);
+ fireEvent.click(trigger);
+ await choose('Game source','windows');
+ fireEvent.click(screen.getByRole('button',{name:'Close launch options'}));
+ expect(document.activeElement).toBe(screen.getByRole('textbox',{name:'Search games'}));
+});
+
+it('updates the active cover preview when the cover is changed on a card',async()=>{
+ const oldArt='data:image/png;base64,AAAA', newArt='data:image/png;base64,BBBB';
+ open.mockResolvedValue('/new.png');
+ invoke.mockImplementation(async command=>command==='list_windows_games'?windowsData:command==='get_game_cover'?oldArt:command==='set_game_cover'?newArt:null);
+ await mount();
+ const inspector=screen.getByRole('complementary');
+ expect(inspector.querySelector('img')?.getAttribute('src')).toBe(oldArt);
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Change cover for Shared name (Steam)'})));
+ expect(inspector.querySelector('img')?.getAttribute('src')).toBe(newArt);
+ expect(screen.getByRole('button',{name:'Open Shared name (Steam)'}).querySelector('img')?.getAttribute('src')).toBe(newArt);
+});
+
+it('does not show a missing Windows runtime as ready and keeps details accessible',async()=>{
+ windowsData.runtimes=[];
+ await mount();await choose('Game source','windows');
+ const details=screen.getByRole('complementary');
+ expect(within(details).getByText('Saved runtime unavailable')).toBeTruthy();
+ expect((within(details).getByRole('button',{name:'Play selected Shared name'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(within(details).getByRole('button',{name:/View game details/}));
+ expect(onWindows).toHaveBeenCalledWith(windows);
+});
+
+it('surfaces a start-failed launch returned as a successful native response',async()=>{
+ const failed={...windows,state:'start-failed',message:'The runtime did not start.'};
+ await mount();
+ invoke.mockImplementation(async command=>command==='launch_windows_game'?(windowsData.games=[failed])[0]:command==='list_windows_games'?windowsData:null);
+ await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Play Shared name (Windows)'})));
+ expect(screen.getByRole('alert').textContent).toContain(failed.message);
+ expect(screen.getByText('Needs review')).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Play Shared name (Windows)'}) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it('keeps five-second polling for active Windows games and slows after they exit',async()=>{
+ windowsData.games=[{...windows,state:'game-running'}];
+ await mount();expect(inventoryCalls()).toBe(1);
+ windowsData.games=[windows];
+ await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});expect(inventoryCalls()).toBe(2);
+ await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});expect(inventoryCalls()).toBe(2);
+ await act(async()=>{await vi.advanceTimersByTimeAsync(25000);});expect(inventoryCalls()).toBe(3);
 });

@@ -2,8 +2,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   Activity, BarChart3, Box, ChevronDown, CircleCheck, Database, Download, ExternalLink,
-  FlaskConical, Gamepad2, Info, Layers, LayoutGrid, List, RefreshCw, RotateCcw, Search,
-  Settings, Sparkles, Trash2, Wine, Wrench,
+  FlaskConical, Gamepad2, Info, Layers, LayoutGrid, List, RefreshCw, Search,
+  Settings, Trash2, Wine, Wrench,
 } from 'lucide-react';
 import { GameCover } from '../GameCover';
 import { GameDiagnosis } from '../Diagnostics';
@@ -82,7 +82,9 @@ export function ToolsHub({ steam, runtimes, diagnostics, scanning, onRefresh, on
   const [monitor, setMonitor] = useState(false);
   const [windowsLoading, setWindowsLoading] = useState(true);
   const actionPane = useRef<HTMLElement>(null);
-  useEffect(() => { if (panel) actionPane.current?.focus(); }, [panel]);
+  const actionTrigger = useRef<HTMLElement | null>(null);
+  const gamePicker = useRef<HTMLSelectElement>(null);
+  useEffect(() => { if (panel) actionPane.current?.focus(); }, [panel, selectedKey]);
   useEffect(() => {
     let disposed = false; setWindowsLoading(true);
     void invoke<Library>('list_windows_games').then(next => {
@@ -100,8 +102,17 @@ export function ToolsHub({ steam, runtimes, diagnostics, scanning, onRefresh, on
   // A removed or refreshed target must not silently redirect a repair to another game.
   const selected = choices.find(game => game.key === selectedKey);
   const changeCategory = (next: Category) => { setCategory(next); setMonitor(false); setPanel(next === 'backups' ? 'repair' : null); };
-  const selectGame = (key: string) => { setSelectedKey(key || null); setMonitor(false); setPanel(null); };
-  const show = (next: Panel) => { setPanel(next); setMonitor(false); };
+  const selectGame = (key: string) => { setSelectedKey(key || null); setMonitor(false); setPanel(key && category === 'backups' ? 'repair' : null); };
+  const show = (next: Panel) => {
+    actionTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPanel(next); setMonitor(false);
+    if (next === panel) actionPane.current?.focus();
+  };
+  const closeAction = () => {
+    setPanel(null);
+    if (actionTrigger.current?.isConnected && actionTrigger.current !== document.body) actionTrigger.current.focus();
+    else gamePicker.current?.focus();
+  };
   const refresh = () => { onRefresh(); setRevision(value => value + 1); };
   const steamGame = selected?.kind === 'steam' ? selected.game : null;
   const windowsGame = selected?.kind === 'windows' ? selected.game : null;
@@ -109,14 +120,14 @@ export function ToolsHub({ steam, runtimes, diagnostics, scanning, onRefresh, on
   const usedRuntime = steamGame?.configuredTool ?? windowsRuntime?.name;
   const diagnosis = steamGame ? diagnostics.find(result => result.appId === steamGame.appId && result.libraryPath === steamGame.libraryPath) ?? null : null;
   const openSelectedWindows = () => { if (windowsGame) onOpenWindows(windowsGame); };
-  const tools = [
+  const tools = (windowsGame ? [
+    { name: 'Open Windows game details', copy: 'Launch options, logs and shortcuts', Icon: ExternalLink, active: true, click: openSelectedWindows },
+  ] : [
     { name: 'Repair Game', copy: 'Review supported, recoverable fixes', Icon: Wrench, active: !!steamGame, click: () => show('fix') },
-    { name: 'Optimize Game', copy: windowsGame ? 'Review launch options' : 'Review per-game Proton settings', Icon: Sparkles, active: !!selected, click: windowsGame ? openSelectedWindows : () => show('proton') },
     { name: 'Verify Files', copy: steamGame ? 'See Steam verification steps' : 'Steam games only', Icon: RefreshCw, active: !!steamGame, click: () => show('verify') },
     { name: 'Clean Prefix', copy: 'Review cache and prefix options', Icon: Trash2, active: !!steamGame, click: () => show('repair') },
-    { name: 'Configure Proton', copy: 'Set Proton and launch options', Icon: Wine, active: !!selected, click: windowsGame ? openSelectedWindows : () => show('proton') },
-    { name: 'Create Shortcut', copy: windowsGame ? 'Open the game’s shortcut control' : 'Windows games only', Icon: ExternalLink, active: !!windowsGame?.gameExe, click: openSelectedWindows },
-  ].filter(tool => `${tool.name} ${tool.copy}`.toLowerCase().includes(query.trim().toLowerCase()));
+    { name: 'Configure Proton', copy: 'Set per-game Proton and launch options', Icon: Wine, active: !!steamGame, click: () => show('proton') },
+  ]).filter(tool => `${tool.name} ${tool.copy}`.toLowerCase().includes(query.trim().toLowerCase()));
   const selectProtonManager = () => changeCategory('proton');
 
   return <div className="gw-tools" aria-label="Gameweave Tools">
@@ -137,9 +148,9 @@ export function ToolsHub({ steam, runtimes, diagnostics, scanning, onRefresh, on
           <div className="gw-tools-inventory-title"><div><h2 id={`${prefix}-runtimes`}><Layers size={31}/>Proton Manager</h2><p>Install, update, and manage Proton versions.</p></div>
             <div><button type="button" className="gw-tools-button primary" onClick={selectProtonManager}><Download size={19}/>Install Proton</button><button type="button" className="gw-tools-button" onClick={refresh} disabled={scanning || windowsLoading}><RefreshCw size={17}/>Refresh</button></div>
           </div>
-          <div className="gw-tools-table-wrap"><table><thead><tr><th>Version</th><th>Status</th><th>Source</th><th>Actions</th></tr></thead><tbody>
-            {runtimes.map(tool => <tr key={tool.path}><th scope="row" title={tool.path}>{tool.name}</th><td><span className="gw-tools-installed"><CircleCheck size={14}/>Detected</span></td><td>{tool.source}</td><td>{selected ? <button type="button" className="gw-tools-button" aria-label={`Configure Proton for ${selected.game.name} (inventory entry ${tool.name})`} onClick={windowsGame ? openSelectedWindows : () => show('proton')}>Configure</button> : <span className="gw-tools-muted">Choose a game</span>}</td></tr>)}
-            {runtimes.length === 0 && <tr><td colSpan={4}>{scanning ? 'Checking installed Proton versions…' : 'No Proton versions detected in the current Steam scan.'}</td></tr>}
+          <div className="gw-tools-table-wrap"><table><thead><tr><th>Version</th><th>Status</th><th>Source</th></tr></thead><tbody>
+            {runtimes.map(tool => <tr key={tool.path}><th scope="row" title={tool.path}>{tool.name}</th><td><span className="gw-tools-installed"><CircleCheck size={14}/>Detected</span></td><td>{tool.source}</td></tr>)}
+            {runtimes.length === 0 && <tr><td colSpan={3}>{scanning ? 'Checking installed Proton versions…' : 'No Proton versions detected in the current Steam scan.'}</td></tr>}
           </tbody></table></div>
         </section>
       </>}
@@ -153,14 +164,14 @@ export function ToolsHub({ steam, runtimes, diagnostics, scanning, onRefresh, on
         {panel === 'repair' && <RepairTools game={steamGame} onChanged={onRefresh}/>}
         {panel === 'proton' && <GameProtonPicker game={steamGame} onChanged={onRefresh} onManage={selectProtonManager}/>}
         {panel === 'verify' && <GlassCard title="Verify Files in Steam" icon={<RefreshCw size={22}/>}><p>In Steam, open Library → {steamGame.name} → Properties → Installed Files → Verify integrity of game files.</p></GlassCard>}
-        {<button type="button" className="gw-tools-button" onClick={() => setPanel(null)}>Close action</button>}
+        {<button type="button" className="gw-tools-button" onClick={closeAction}>Close action</button>}
       </section>}
     </div>
     <aside className="gw-tools-inspector" aria-label="Selected game">
       {selected ? <div className="gw-tools-art"><GameCover source={selected.kind === 'steam' ? { source: 'steam', id: selected.game.appId, libraryPath: selected.game.libraryPath } : { source: 'windows', id: selected.game.id, libraryPath: null }} name={selected.game.name} onOpen={() => {}} readOnly/></div> : <div className="gw-tools-art gw-tools-empty-art"><Gamepad2 size={50}/><span>Game tools</span></div>}
       <div className="gw-tools-inspector-body">
         <div className="gw-tools-game-heading"><h2>{selected?.game.name ?? 'Choose a game'}</h2>{selected && <p>{windowsGame ? 'Windows game' : 'Steam game'}{usedRuntime ? ` · ${usedRuntime}` : ''}</p>}</div>
-        <label className="gw-tools-game-picker">Game <ChevronDown size={16}/><select aria-label="Game for tools" value={selected?.key ?? ''} onChange={event => selectGame(event.target.value)}>
+        <label className="gw-tools-game-picker">Game <ChevronDown size={16}/><select ref={gamePicker} aria-label="Game for tools" value={selected?.key ?? ''} onChange={event => selectGame(event.target.value)}>
           <option value="">{windowsLoading && !choices.length ? 'Loading games…' : 'Choose a game…'}</option>{choices.map(choice => <option key={choice.key} value={choice.key}>{choice.game.name} ({choice.kind === 'windows' ? 'Windows' : 'Steam'})</option>)}
         </select></label>
         {windowsError && <p className="gw-tools-inline-error" role="alert">{windowsError} <button type="button" className="gw-tools-button" onClick={() => setRevision(n => n + 1)} disabled={windowsLoading}>Retry</button></p>}
@@ -169,13 +180,9 @@ export function ToolsHub({ steam, runtimes, diagnostics, scanning, onRefresh, on
           <GlassCard title="Game Diagnostics" icon={<Activity size={22}/>} action={<button type="button" className="gw-tools-button primary" onClick={onScan} disabled={!steamGame || scanning}>{scanning ? 'Checking…' : 'Run scan'}</button>}>
             {steamGame ? <><ul className="gw-tools-findings"><li>Game folder: {steamGame.installPathExists ? 'Found' : 'Not found'}</li><li>Proton prefix: {steamGame.prefixExists ? 'Found' : 'Not found'}</li><li>Game file integrity: Not verified here</li></ul>{diagnosis && <details className="gw-tools-log-detail"><summary>Log analysis</summary><GameDiagnosis result={diagnosis}/></details>}</> : <p>No game selected.</p>}
           </GlassCard>}
-        <GlassCard title="Repair & Maintenance" icon={<Wrench size={22}/>}>
-          <div className="gw-tools-card-actions"><button type="button" className="gw-tools-button primary" disabled={!steamGame} onClick={() => show('fix')}><Wrench size={17}/>Review repair</button><button type="button" className="gw-tools-button" disabled={!steamGame} onClick={() => show('repair')}><Trash2 size={17}/>Cache & prefix</button></div>
-          {windowsGame && <p>These recovery tools are for Steam games. <button type="button" className="gw-tools-button" onClick={openSelectedWindows}>Open Windows game settings</button></p>}
-        </GlassCard>
-        <GlassCard title="Backup & Rollback" icon={<Database size={22}/>}>
-          <div className="gw-tools-card-actions"><button type="button" className="gw-tools-button" disabled={!steamGame} onClick={() => show('repair')}><Layers size={17}/>Review backups</button><button type="button" className="gw-tools-button" disabled={!steamGame} onClick={() => show('repair')}><RotateCcw size={17}/>Restore options</button></div>
-        </GlassCard>
+        {category === 'diagnostics' && steamGame && <GlassCard title="Repair & Maintenance" icon={<Wrench size={22}/>}>
+          <button type="button" className="gw-tools-button primary" onClick={() => show('fix')}>Review repair</button>
+        </GlassCard>}
         {category === 'processes' && windowsGame && <GlassCard title="Game Processes" icon={<BarChart3 size={22}/>}><ResourceMonitor key={windowsGame.id} game={windowsGame} enabled={monitor} onToggle={setMonitor}/><button type="button" className="gw-tools-button" onClick={refresh} disabled={scanning || windowsLoading}>Refresh game state</button></GlassCard>}
         <GlassCard title="Game Information" icon={<Info size={22}/>}>
           {selected ? <dl className="gw-tools-paths"><dt>Install path</dt><dd>{steamGame?.installPath ?? windowsGame?.directory}</dd><dt>Prefix path</dt><dd>{steamGame?.prefixPath ?? windowsGame?.prefixDirectory ?? 'Not available'}</dd></dl> : <p>Game details appear here after selection.</p>}

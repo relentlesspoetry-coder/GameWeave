@@ -1,10 +1,26 @@
 //! Serialize updates against game launches and configuration changes.
-use std::{path::{Path, PathBuf}, process::Stdio, sync::{atomic::{AtomicBool, Ordering}, Mutex, OnceLock, RwLock, RwLockReadGuard}};
+use std::{io::{Read, Write}, path::{Path, PathBuf}, process::{Child, Stdio}, sync::{atomic::{AtomicBool, Ordering}, Mutex, OnceLock, RwLock, RwLockReadGuard}, time::{Duration, Instant}};
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Phase { Idle, Updating, Closing }
 static UPDATING: RwLock<Phase> = RwLock::new(Phase::Idle);
 static EXECUTABLE: OnceLock<PathBuf> = OnceLock::new();
-pub fn initialize() { if let Ok(path) = crate::portable::executable() { let _ = EXECUTABLE.set(path); } }
+pub fn initialize() {
+    if let Ok(path) = crate::portable::executable() { let _ = EXECUTABLE.set(path); }
+    if let Some(path) = std::env::var_os(READY_ENV).map(PathBuf::from) {
+        // Consume this before Tauri starts workers or child programs.
+        std::env::remove_var(READY_ENV);
+        let expected_dir = path.parent().and_then(Path::file_name).and_then(|part| part.to_str())
+            .and_then(|part| part.strip_prefix(REOPEN_DIR_PREFIX));
+        let temp = std::fs::canonicalize(std::env::temp_dir()).ok();
+        if path.is_absolute()
+            && path.file_name().is_some_and(|name| name == READY_FILE)
+            && path.parent().and_then(Path::parent) == temp.as_deref()
+            && expected_dir.is_some_and(|nonce| nonce.len() == 32 && nonce.bytes().all(|b| b.is_ascii_hexdigit()))
+        {
+            let _ = READY_PATH.set(path);
+        }
+    }
+}
 static REOPEN_ATTEMPTED: AtomicBool = AtomicBool::new(false);
 static UPDATE_LEASE: Mutex<Option<std::fs::File>> = Mutex::new(None);
 pub struct Activity { _local: RwLockReadGuard<'static, Phase>, _shared: std::fs::File }
@@ -111,27 +127,132 @@ fn validate_version(value: &str) -> Result<(), String> {
     }
     Ok(())
 }
-fn verify_installed(path: &Path, version: &str) -> Result<(), String> {
-    validate_version(version)?;
-    let output = crate::font_runtime::child_command(path).arg("--proton-medic-version").stdin(Stdio::null()).output()
-        .map_err(|e| format!("Could not open the updated program: {e}"))?;
-    if !output.status.success() || output.stdout != format!("{version}\n").as_bytes() {
-        return Err("The installed program does not match the downloaded version. Keep this window open and retry after installation completes.".into());
+const PROBE_TIMEOUT: Duration = Duration::from_secs(15);
+const READY_TIMEOUT: Duration = Duration::from_secs(30);
+const READY_ENV: &str = "GAMEWEAVE_UPDATE_READY";
+const READY_FILE: &str = "ready";
+const REOPEN_DIR_PREFIX: &str = "gameweave-reopen-";
+static READY_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+struct ReopenReceipt(PathBuf);
+
+impl ReopenReceipt {
+    fn new() -> std::io::Result<Self> {
+        use std::os::unix::fs::DirBuilderExt;
+        let mut entropy = std::fs::File::open("/dev/urandom")?;
+        let temp = std::fs::canonicalize(std::env::temp_dir())?;
+        for _ in 0..4 {
+            let mut nonce = [0; 16];
+            entropy.read_exact(&mut nonce)?;
+            let dir = temp.join(format!("{REOPEN_DIR_PREFIX}{:032x}", u128::from_ne_bytes(nonce)));
+            match std::fs::DirBuilder::new().mode(0o700).create(&dir) {
+                Ok(()) => return Ok(Self(dir)),
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(e) => return Err(e),
+            }
+        }
+        Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve a private relaunch directory"))
     }
-    Ok(())
+    fn path(&self, name: &str) -> PathBuf { self.0.join(name) }
 }
-fn launch_installed(path: &Path, version: &str) -> Result<std::process::Child, String> {
-    verify_installed(path, version)?;
+
+impl Drop for ReopenReceipt {
+    fn drop(&mut self) {
+        for name in ["version", READY_FILE] {
+            let _ = std::fs::remove_file(self.path(name));
+        }
+        let _ = std::fs::remove_dir(&self.0);
+    }
+}
+
+pub fn mark_ready() {
+    if let Some(path) = READY_PATH.get() {
+        use std::os::unix::fs::OpenOptionsExt;
+        if let Ok(mut file) = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path) {
+            let _ = writeln!(file, "{}", env!("CARGO_PKG_VERSION"));
+        }
+    }
+}
+
+fn stop_child(mut child: Child) {
+    if matches!(child.try_wait(), Ok(None)) {
+        // Both spawned commands are group leaders; stop only that invocation
+        // and any wrapper/helper processes it created during startup.
+        unsafe { libc::kill(-(child.id() as libc::pid_t), libc::SIGKILL); }
+        // A child in uninterruptible I/O can outlive SIGKILL. Reap without
+        // extending the caller’s startup deadline or retaining its receipt.
+        let _ = std::thread::Builder::new().name("gameweave-relaunch-reaper".into())
+            .spawn(move || { let _ = child.wait(); });
+    }
+}
+
+fn read_version(path: &Path, version: &str) -> std::io::Result<bool> {
+    let mut output = Vec::new();
+    std::fs::File::open(path)?.take(128).read_to_end(&mut output)?;
+    Ok(output == format!("{version}\n").as_bytes())
+}
+
+fn verify_installed(path: &Path, version: &str, receipt: &ReopenReceipt, timeout: Duration) -> Result<(), String> {
     use std::os::unix::process::CommandExt;
-    crate::font_runtime::child_command(path).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
-        .process_group(0).spawn().map_err(|e| format!("Update installed, but relaunch failed: {e}"))
+    validate_version(version)?;
+    let probe = receipt.path("version");
+    let output = std::fs::File::create(&probe).map_err(|e| format!("Could not prepare the version check: {e}"))?;
+    let mut child = crate::font_runtime::child_command(path).arg("--proton-medic-version")
+        .stdin(Stdio::null()).stdout(output).stderr(Stdio::null()).process_group(0).spawn()
+        .map_err(|e| format!("Could not open the updated program: {e}"))?;
+    let deadline = Instant::now() + timeout;
+    let result = loop {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => break read_version(&probe, version)
+                .map_err(|e| format!("Could not read the installed version: {e}"))
+                .and_then(|matches| if matches { Ok(()) } else { Err("The installed program does not match the downloaded version.".into()) }),
+            Ok(Some(status)) => break Err(format!("The updated program could not report its version ({status}).")),
+            Ok(None) if Instant::now() >= deadline => break Err("The updated program did not respond to its version check in time.".into()),
+            Ok(None) => std::thread::sleep(Duration::from_millis(25)),
+            Err(e) => break Err(format!("Could not check whether the updated program opened: {e}")),
+        }
+    };
+    if result.is_err() { stop_child(child); }
+    result
+}
+
+fn wait_for_ready(child: &mut Child, ready: &Path, version: &str, timeout: Duration) -> Result<(), String> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return Err(format!("The updated program closed before its interface was ready ({status}).")),
+            Err(e) => return Err(format!("Could not check the updated program: {e}")),
+            Ok(None) => {},
+        }
+        // The child writes the receipt only once the frontend has committed the
+        // real interface. An empty/partly written receipt is not a ready signal.
+        if read_version(ready, version).unwrap_or(false) { return Ok(()); }
+        if Instant::now() >= deadline { return Err("The updated program did not finish opening in time.".into()); }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+}
+
+fn launch_installed(path: &Path, version: &str, probe_timeout: Duration, ready_timeout: Duration) -> Result<Child, String> {
+    use std::os::unix::process::CommandExt;
+    let receipt = ReopenReceipt::new().map_err(|e| format!("Could not prepare the update relaunch: {e}"))?;
+    verify_installed(path, version, &receipt, probe_timeout)?;
+    let ready = receipt.path(READY_FILE);
+    let mut child = crate::font_runtime::child_command(path).env(READY_ENV, &ready)
+        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).process_group(0).spawn()
+        .map_err(|e| format!("Update installed, but relaunch failed: {e}"))?;
+    if let Err(e) = wait_for_ready(&mut child, &ready, version, ready_timeout) {
+        stop_child(child);
+        return Err(e);
+    }
+    Ok(child)
 }
 pub fn restart(app: tauri::AppHandle, version: String) -> Result<(), String> {
     let updating = UPDATING.read().map_err(|_| "Update state unavailable")?;
     if *updating != Phase::Updating { return Err("No app update is awaiting relaunch".into()); }
+    let result = EXECUTABLE.get().ok_or_else(|| "Installed program path unavailable".to_string())
+        .and_then(|path| launch_installed(path, &version, PROBE_TIMEOUT, READY_TIMEOUT));
     REOPEN_ATTEMPTED.store(true, Ordering::Release);
-    let path = EXECUTABLE.get().ok_or("Installed program path unavailable")?;
-    launch_installed(path, &version)?;
+    result?;
     app.exit(0); Ok(())
 }
 #[cfg(test)] mod tests {
@@ -174,21 +295,46 @@ pub fn restart(app: tauri::AppHandle, version: String) -> Result<(), String> {
         assert!(validate_version("0.6.11").is_ok());
     }
     #[test] fn installed_version_probe_checks_exit_and_exact_version() {
-        let path = std::env::temp_dir().join(format!("pm-update-version-{}",std::process::id()));
+        let dir=ReopenReceipt::new().unwrap();
+        let path=dir.path("exec");
         std::fs::write(&path, "#!/bin/sh\n[ \"$1\" = --proton-medic-version ] || exit 2\nprintf '0.6.11\\n'\n").unwrap();
         std::fs::set_permissions(&path,std::fs::Permissions::from_mode(0o700)).unwrap();
-        assert!(verify_installed(&path,"0.6.11").is_ok()); assert!(verify_installed(&path,"0.6.12").is_err());
-        std::fs::remove_file(&path).unwrap(); assert!(verify_installed(&path,"0.6.11").is_err());
+        let timeout=Duration::from_secs(2);
+        assert!(verify_installed(&path,"0.6.11",&dir,timeout).is_ok());
+        assert!(verify_installed(&path,"0.6.12",&dir,timeout).is_err());
+        std::fs::remove_file(&path).unwrap();
+        assert!(verify_installed(&path,"0.6.11",&dir,timeout).is_err());
     }
-    #[test] fn relaunch_opens_replacement_at_the_saved_install_path() {
-        let dir=std::env::temp_dir().join(format!("pm-relaunch-{}",std::process::id()));std::fs::create_dir(&dir).unwrap();
-        let path=dir.join("proton-medic");let receipt=dir.join("started");
-        std::fs::write(&path,"old executable").unwrap();std::fs::rename(&path,dir.join("previous")).unwrap();
-        std::fs::write(&path,format!("#!/bin/sh\nif [ \"$1\" = --proton-medic-version ]; then printf '0.6.12\\n'; else touch '{}'; fi\n",receipt.display())).unwrap();
+
+    #[test] fn relaunch_waits_for_matching_startup_receipt() {
+        let dir=ReopenReceipt::new().unwrap();
+        let path=dir.path("exec");
+        std::fs::write(&path, "#!/bin/sh\nif [ \"$1\" = --proton-medic-version ]; then printf '0.6.12\\n'; else printf '0.6.12\\n' > \"$GAMEWEAVE_UPDATE_READY\"; exec sleep 60; fi\n").unwrap();
         std::fs::set_permissions(&path,std::fs::Permissions::from_mode(0o700)).unwrap();
-        assert!(launch_installed(&path,"0.6.11").is_err());assert!(!receipt.exists());
-        assert!(launch_installed(&path,"0.6.12").unwrap().wait().unwrap().success());assert!(receipt.exists());
-        std::fs::remove_dir_all(dir).unwrap();
+        let timeout=Duration::from_secs(2);
+        assert!(launch_installed(&path,"0.6.11",timeout,timeout).is_err());
+        let mut child=launch_installed(&path,"0.6.12",timeout,timeout).unwrap();
+        assert!(child.try_wait().unwrap().is_none());
+        stop_child(child);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test] fn relaunch_handles_a_failed_start_and_bounds_unresponsive_children() {
+        let dir=ReopenReceipt::new().unwrap();
+        let path=dir.path("exec");
+        let timeout=Duration::from_secs(2);
+        let short=Duration::from_millis(80);
+        for (source, expected) in [
+            ("#!/bin/sh\nexec sleep 60\n","version check in time"),
+            ("#!/bin/sh\nif [ \"$1\" = --proton-medic-version ]; then printf '0.6.12\\n'; else exit 1; fi\n","closed before its interface was ready"),
+            ("#!/bin/sh\nif [ \"$1\" = --proton-medic-version ]; then printf '0.6.12\\n'; else exec sleep 60; fi\n","did not finish opening in time"),
+        ] {
+            std::fs::write(&path,source).unwrap();
+            std::fs::set_permissions(&path,std::fs::Permissions::from_mode(0o700)).unwrap();
+            let err=launch_installed(&path,"0.6.12",if expected=="version check in time"{short}else{timeout},short).unwrap_err();
+            assert!(err.contains(expected),"{err}");
+        }
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test] fn update_lease_blocks_new_work_and_requires_running_work_to_finish() {

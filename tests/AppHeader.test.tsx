@@ -72,8 +72,10 @@ it('retains the library page across game details and resets it when searching', 
   });
   render(<App/>);
   fireEvent.click(await screen.findByRole('button',{name:'Next',exact:true}));
-  fireEvent.click(screen.getByRole('button',{name:'Game settings for Game 040 (Steam)'}));
+  fireEvent.click(screen.getByRole('button',{name:'Open Game 040 (Steam)'}));
+  expect(document.activeElement).toBe(screen.getByRole('heading',{name:'Game Details',level:1}));
   fireEvent.click(screen.getByRole('button',{name:'Back to My Games'}));
+  expect(document.activeElement).toBe(screen.getByRole('heading',{name:'My Library',level:1}));
   expect(await screen.findByRole('button',{name:'Open Game 040 (Steam)'})).toBeTruthy();
   expect(screen.getByText('Page 2 of 3')).toBeTruthy();
   fireEvent.change(screen.getByRole('textbox',{name:'Search games'}),{target:{value:'Game 0'}});

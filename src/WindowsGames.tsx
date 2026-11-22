@@ -11,12 +11,19 @@ import { LaunchHistory } from './LaunchHistory';
 import { ResourceMonitor } from './ResourceMonitor';
 import { selectableRuntimes } from './runtimeOptions';
 import { DetailFacts, GameDetailHero } from './gameweave/GameDetailLayout';
-import { InstallProgress, InstallSteps, installPhase } from './gameweave/InstallProgress';
+import { InstallProgress, InstallSteps, canRetryInstall, installPhase } from './gameweave/InstallProgress';
 interface LogReport { findings: Finding[]; logs: { name: string; status: string; truncated: boolean }[] }
 export interface Runtime { id: string; name: string; kind: string }
-export interface Game { id: string; name: string; runtimeId: string; gameExe: string | null; state: string; exitCode: number | null; message: string; directory: string; windowsDrive: string; prefixDirectory: string; logDirectory: string | null; launchArguments?: string[]; workingDirectory?: string | null; lastLaunchedAt?: number | null }
+export interface Game { id: string; name: string; runtimeId: string; gameExe: string | null; state: string; exitCode: number | null; message: string; directory: string; windowsDrive: string; prefixDirectory: string; logDirectory: string | null; launchArguments?: string[]; workingDirectory?: string | null; lastLaunchedAt?: number | null; installerPath?: string | null }
 export interface Library { runtimes: Runtime[]; games: Game[]; removedGames?: Game[]; warnings: string[] }
 interface ExecutableSearch { executables: string[]; truncated: boolean }
+const installerSessionKey = 'gameweave.active-installer.v1';
+const readInstallerId = () => {
+  try { return sessionStorage.getItem(installerSessionKey) ?? undefined; } catch { return undefined; }
+};
+const saveInstallerId = (id?: string) => {
+  try { if (id) sessionStorage.setItem(installerSessionKey, id); else sessionStorage.removeItem(installerSessionKey); } catch { /* The current view still retains the ID. */ }
+};
 const empty: Library = { runtimes: [], games: [], warnings: [] };
 const isRunning = (game: Game) => game.state.endsWith('running') || game.state === 'session-ended';
 const STATUS_LABELS: Record<string, string> = { 'installer-running': 'Installing', 'game-running': 'Running', 'installer-exited': 'Choose game executable', 'ready-to-test': 'Ready to launch', 'game-exited': 'Stopped', 'process-failed': 'Process failed', 'start-failed': 'Could not start', 'session-ended': 'Previous run needs attention', interrupted: 'Previous run interrupted' };
@@ -33,7 +40,8 @@ export function WindowsGames({selectedId,onBack}:{selectedId?:string;onBack?:()=
   const [runtime, setRuntime] = useState('');
   const [approved, setApproved] = useState(false);
   const [startingInstaller, setStartingInstaller] = useState(false);
-  const [lastInstallerId, setLastInstallerId] = useState<string>();
+  const [lastInstallerId, setLastInstallerId] = useState<string | undefined>(readInstallerId);
+  const trackInstaller = (id?: string) => { setLastInstallerId(id); saveInstallerId(id); };
   const runtimeRef = useRef('');
   const chooseRuntime = (next: string) => { runtimeRef.current = next; setRuntime(next); setApproved(false); };
   const [busy, setBusy] = useState(false);
@@ -42,76 +50,143 @@ export function WindowsGames({selectedId,onBack}:{selectedId?:string;onBack?:()=
   const [refreshError, setRefreshError] = useState('');
   const sequence = useRef(0);
   const taskLocked = useRef(false);
+  const statusEpoch = useRef(0);
+  const [statusError, setStatusError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const refresh = useCallback(async () => {
-    const request = ++sequence.current;
+    const request = ++sequence.current; ++statusEpoch.current; setRefreshing(true);
     let next: Library;
     try { next = await invoke<Library>('list_windows_games'); }
     catch (error) {
-      if (request === sequence.current) setRefreshError(`Could not read Windows games: ${String(error)}`);
+      if (request === sequence.current) { setRefreshing(false); setRefreshError(`Could not read Windows games: ${String(error)}`); }
       return;
     }
     if (request !== sequence.current) return;
-    setRefreshError('');
+    setRefreshError(''); setStatusError(''); setRefreshing(false);
     setLibrary(old => JSON.stringify(old) === JSON.stringify(next) ? old : next); setLoaded(true);
     const options = selectableRuntimes(next.runtimes);
     const nextRuntime = options.some(r => r.id === runtimeRef.current) ? runtimeRef.current : options[0]?.id ?? '';
     if (nextRuntime !== runtimeRef.current) chooseRuntime(nextRuntime);
   }, []);
   useEffect(() => {
-    let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      try { await refresh(); }
-      finally { if (!stopped) timer = setTimeout(() => void poll(), 5000); }
-    };
-    void poll();
-    return () => { stopped = true; ++sequence.current; clearTimeout(timer); };
+    let requested = false;
+    const initial = () => { if (!document.hidden && !requested) { requested = true; void refresh(); } };
+    initial();
+    document.addEventListener('visibilitychange', initial);
+    return () => { ++sequence.current; ++statusEpoch.current; document.removeEventListener('visibilitychange', initial); };
   }, [refresh]);
+  const activeGameIds = JSON.stringify(library.games.filter(game =>
+    game.state.endsWith('-running') && (!selectedId || game.id === selectedId),
+  ).map(game => game.id).sort());
+  useEffect(() => {
+    const ids: string[] = JSON.parse(activeGameIds);
+    if (!ids.length) return;
+    let stopped = false;
+    let inFlight = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => { clearTimeout(timer); if (!stopped && !document.hidden) timer = setTimeout(() => void poll(), 5000); };
+    const poll = async () => {
+      if (stopped || document.hidden || inFlight) return;
+      if (taskLocked.current || refreshing) { schedule(); return; }
+      inFlight = true;
+      const epoch = statusEpoch.current;
+      try {
+        const updates = await Promise.allSettled(ids.map(id => invoke<Game>('get_windows_game', { id })));
+        if (stopped || document.hidden || epoch !== statusEpoch.current) return;
+        const next = new Map<string, Game>();
+        let failed = false;
+        updates.forEach((update, i) => {
+          if (update.status === 'fulfilled' && update.value?.id === ids[i]) next.set(ids[i], update.value);
+          else failed = true;
+        });
+        setStatusError(failed ? 'Could not refresh a running game or installer. Use Refresh to check again.' : '');
+        setLibrary(old => {
+          const games = old.games.map(game => next.get(game.id) ?? game);
+          return JSON.stringify(games) === JSON.stringify(old.games) ? old : {...old, games};
+        });
+      } finally { inFlight = false; schedule(); }
+    };
+    const visibility = () => {
+      clearTimeout(timer); ++statusEpoch.current;
+      if (!document.hidden) { if (inFlight) schedule(); else void poll(); }
+    };
+    schedule();
+    document.addEventListener('visibilitychange', visibility);
+    return () => { stopped = true; clearTimeout(timer); document.removeEventListener('visibilitychange', visibility); };
+  }, [activeGameIds, refreshing]);
   const run = async (task: () => Promise<void>) => {
     if (taskLocked.current) return;
-    taskLocked.current = true; setBusy(true); setError(''); setNotice('');
+    taskLocked.current = true; ++statusEpoch.current; setBusy(true); setError(''); setNotice('');
     try { await task(); } catch (e) { setError(String(e)); } finally { taskLocked.current = false; setBusy(false); }
   };
   const remember = (game: Game) => {
     if (game?.id) setLibrary(old => ({ ...old, games: [...old.games.filter(g => g.id !== game.id), game].sort((a, b) => a.name.localeCompare(b.name)) }));
   };
+  const runningInstalls = library.games.filter(game => game.state === 'installer-running');
+  const trackedInstall = library.games.find(game => game.id === lastInstallerId)
+    ?? (!lastInstallerId && !installer && runningInstalls.length === 1 ? runningInstalls[0] : undefined);
+  const autoInstallerId = !selectedId && mode === 'install' && !lastInstallerId && !installer && runningInstalls.length === 1
+    ? runningInstalls[0].id : undefined;
+  useEffect(() => {
+    if (autoInstallerId) { setLastInstallerId(autoInstallerId); saveInstallerId(autoInstallerId); }
+  }, [autoInstallerId]);
+  const clearWizard = () => { trackInstaller(undefined); setInstaller(''); setName(''); setPrefix(''); setApproved(false); };
+  const saveInstalled = async (game: Game, targetName: string, path: string, shortcut: boolean) => {
+    remember(await invoke<Game>('confirm_windows_installation',{id:game.id,name:targetName,path,confirmed:true}));
+    await refresh(); setNotice('Game saved. Launch it when you are ready to test.');
+    if (shortcut) {
+      try { await invoke('create_windows_game_shortcut',{id:game.id,confirmed:true}); setNotice('Game saved. Desktop and applications-menu shortcuts created.'); }
+      catch (error) { throw new Error('Game saved, but shortcut creation failed: '+String(error)+'. Use Create desktop shortcut to retry.'); }
+    }
+  };
   const pickExecutable = () => run(async () => {
     const file = await open({ multiple: false, directory: false, filters: [{ name: mode === 'install' ? 'Windows installer' : 'Windows game', extensions: ['exe'] }] });
     if (typeof file !== 'string') return;
-    setLastInstallerId(undefined);
+    if (mode === 'install') trackInstaller(undefined);
     setInstaller(file); setName(file.split('/').pop()?.replace(/\.exe$/i, '') ?? 'Windows game'); setApproved(false);
     const drive = file.lastIndexOf('/drive_c/');
     setPrefix(mode === 'existing' && drive >= 0 ? file.slice(0, drive) : '');
   });
   const submit = () => run(async () => {
-    if (!approved || !installer || !name.trim() || !selectableRuntimes(library.runtimes).some(r => r.id === runtime) || (mode === 'existing' && !prefix)) return;
+    const retryTarget = mode === 'install' && canRetryInstall(trackedInstall) ? trackedInstall : undefined;
+    if (!approved) return;
+    if (!retryTarget && (!installer || !name.trim() || !selectableRuntimes(library.runtimes).some(r => r.id === runtime)
+      || (mode === 'existing' ? !prefix : !!trackedInstall))) return;
+    setApproved(false);
     if (mode === 'install') setStartingInstaller(true);
     const game = await (mode === 'install'
-      ? invoke<Game>('install_windows_game', { name, installer, runtimeId: runtime, confirmed: true })
+      ? retryTarget ? invoke<Game>('retry_windows_installation', { id: retryTarget.id, confirmed: true })
+        : invoke<Game>('install_windows_game', { name, installer, runtimeId: runtime, confirmed: true })
       : invoke<Game>('register_windows_game', { name, path: installer, prefix, runtimeId: runtime, confirmed: true })).finally(() => setStartingInstaller(false));
-    if (game?.id) {
-      remember(game);
-      if (mode === 'install') setLastInstallerId(game.id);
+    if (!game?.id) throw new Error('Could not read the saved game profile. Refresh the library before trying again.');
+    if (retryTarget && game.id !== retryTarget.id) throw new Error('Installer retry returned a different game profile. Refresh before continuing.');
+    remember(game);
+    if (mode === 'install') {
+      trackInstaller(game.id);
+      if (game.state === 'start-failed') { setError(game.message); return; }
+      if (game.state === 'installer-running') setNotice('Installer started. Complete its setup window, then return here to finish.');
+    } else {
+      await refresh();
+      setNotice('Installed game added using its existing prefix.');
     }
-    setApproved(false); await refresh();
-    if (mode === 'install' && game?.state === 'start-failed') {
-      setError(game.message);
-      return;
-    }
-    if (!game?.id) return;
-    setNotice(mode === 'install' ? 'Installer started. Complete its setup window, then review the suggested game executable in its card.' : 'Installed game added using its existing prefix.');
   });
-  const switchMode = (next: 'install' | 'existing') => { setMode(next); setInstaller(''); setName(''); setPrefix(''); setApproved(false); setLastInstallerId(undefined); };
+  const switchMode = (next: 'install' | 'existing') => {
+    if (next === mode) return;
+    setMode(next); setInstaller(''); setName(''); setPrefix(''); setApproved(false);
+  };
 
   const runtimeOptions = selectableRuntimes(library.runtimes);
-  const shownGames=selectedId?library.games.filter(game=>game.id===selectedId):library.games;
-  const trackedInstall = library.games.find(game => game.id === lastInstallerId)
-    ?? (!installer ? library.games.find(game => game.state === 'installer-running') : undefined);
+  const shownGames = selectedId ? library.games.filter(game=>game.id===selectedId)
+    : library.games.filter(game => mode !== 'install' || game.id !== trackedInstall?.id || !!game.gameExe);
   const trackedRuntime = library.runtimes.find(option => option.id === (trackedInstall?.runtimeId ?? runtime))?.name;
+  const canRetry = canRetryInstall(trackedInstall);
+  const finish = trackedInstall?.state === 'installer-exited' && !trackedInstall.gameExe;
+  const wizardLocked = mode === 'install' && !!trackedInstall;
   return <>
     {selectedId&&<button className="pm-back" onClick={onBack}><ArrowLeft size={17}/>Back to My Games</button>}
     <div className="pm-page-title"><div><h1>{selectedId?'Game Details':'Install Game'}</h1><p>{selectedId?'Launch with the saved runtime and settings.':'Install a Windows game with Proton or add one you already have.'}</p></div><button disabled={busy} className="pm-button pm-button-secondary" onClick={() => void run(refresh)}><RefreshCw size={17}/>Refresh</button></div>
     {refreshError && <p role="alert" className="pm-repair-danger">{refreshError} Your saved games are unchanged. Use Refresh to try again.</p>}
+    {statusError && <p role="status" className="pm-repair-danger">{statusError}</p>}
     {error && <p role="alert" className="pm-repair-danger">{error}</p>}
     {notice && <p role="status" className="pm-auto-message">{notice}</p>}
     {library.warnings.map((warning, i) => <p key={i} role="alert" className="pm-repair-danger">{warning}</p>)}
@@ -125,6 +200,7 @@ export function WindowsGames({selectedId,onBack}:{selectedId?:string;onBack?:()=
           {mode === 'install' && <InstallSteps phase={installPhase(installer, startingInstaller, trackedInstall)}/>}
           <header><h2>{mode === 'install' ? 'Install a Windows game' : 'Add an existing installation'}</h2>
           <p>{mode === 'install' ? 'Run a trusted .exe installer in a separate Windows prefix.' : 'Choose the game executable and the prefix used to install it. Game files are kept in place.'}</p></header>
+          {!wizardLocked && <>
           <div className="gw-install-config-field">
           {mode === 'install' && <span>Installer file</span>}
           <button disabled={busy} className="pm-button pm-button-secondary" onClick={() => void pickExecutable()}>{mode === 'install' ? 'Choose installer (.exe)' : 'Choose game (.exe)'}</button>
@@ -141,22 +217,34 @@ export function WindowsGames({selectedId,onBack}:{selectedId?:string;onBack?:()=
           {!runtimeOptions.length && loaded && <p role="status">No usable Proton runtime found. Install Proton in Steam, or install GE-Proton and UMU, then refresh.</p>}
           <label className="pm-launch-consent"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)}/><span>{mode === 'install' ? 'I trust this installer and approve running it. Windows programs can access my user files.' : 'I trust this executable and approve using the selected runtime with its existing prefix.'}</span></label>
           <footer><button className="pm-button pm-button-primary" disabled={busy || !approved || !installer || !name.trim() || !selectableRuntimes(library.runtimes).some(r => r.id === runtime) || (mode === 'existing' && !prefix)} onClick={() => void submit()}><Download size={17}/>{busy ? 'Working…' : mode === 'install' ? 'Run installer' : 'Add game'}</button></footer>
-          <details className="pm-update-details"><summary>{mode === 'install' ? 'Installation help' : 'Which prefix should I use?'}</summary><p>{mode === 'install' ? 'Complete the installer’s setup window and keep Gameweave open. When it finishes, select the installed game’s .exe in its card below. Files on other drives can be selected. An installer exit code alone does not confirm installation.' : 'Use the same prefix and runtime that previously ran the game. A new empty prefix will not contain its registry settings or installed dependencies. Adding a game saves a launcher profile without copying or reinstalling it.'}</p></details>
+          </>}
+          {finish && trackedInstall && <InstallationAssistant key={trackedInstall.id} game={trackedInstall} busy={busy} run={run} allowManual
+            onConfirm={(targetName,path,shortcut) => saveInstalled(trackedInstall, targetName, path, shortcut)}/>}
+          {canRetry && trackedInstall && <section aria-label="Retry current installation">
+            <h3>Retry in the same prefix</h3>
+            <p>Retry uses the previously selected installer and saved Proton version for {trackedInstall.name}. Existing files and the profile are kept.</p>
+            {(trackedInstall.installerPath || installer) && <p className="pm-selected-path"><code>{trackedInstall.installerPath || installer}</code></p>}
+            <label className="pm-launch-consent"><input type="checkbox" checked={approved} disabled={busy} onChange={event => setApproved(event.target.checked)}/><span>I trust the saved installer and approve running it again. Windows programs can access my user files.</span></label>
+            <button type="button" className="pm-button pm-button-primary" disabled={busy || !approved} onClick={() => void submit()}>{busy ? 'Working…' : 'Retry installer'}</button>
+          </section>}
+          {wizardLocked && trackedInstall && !isRunning(trackedInstall) && <div className="pm-button-row"><button type="button" className="pm-button pm-button-secondary" disabled={busy} onClick={clearWizard}>{trackedInstall.gameExe ? 'Start another installation' : 'Close this setup'}</button></div>}
+          <details className="pm-update-details"><summary>{mode === 'install' ? 'Installation help' : 'Which prefix should I use?'}</summary><p>{mode === 'install' ? 'Complete the installer’s setup window and keep Gameweave open. When it finishes, select the installed game’s .exe in the Finish step here. Files on other drives can be selected. An installer exit code alone does not confirm installation.' : 'Use the same prefix and runtime that previously ran the game. A new empty prefix will not contain its registry settings or installed dependencies. Adding a game saves a launcher profile without copying or reinstalling it.'}</p></details>
         </div>
-        {mode === 'install' && <InstallProgress installer={installer} name={name} runtime={trackedRuntime} game={trackedInstall} starting={startingInstaller}/>}
+        {mode === 'install' && <InstallProgress installer={trackedInstall?.installerPath || installer} name={name} runtime={trackedRuntime} game={trackedInstall} starting={startingInstaller}/>}
       </div>
     </section>}
     <section className={selectedId ? 'gw-detail-focus' : 'pm-section'} aria-label="Managed Windows games">
       {!selectedId && <div className="pm-section-heading"><div><h2>Your Windows games</h2><p>Choose a game to launch, rename, or manage.</p></div></div>}
       {!shownGames.length && <p role="status">{loaded ? selectedId?'This game is no longer in the visible library. Return to My Games or restore it from Windows Games.':'No Windows games have been added yet.' : refreshError ? 'Windows game library unavailable.' : 'Loading Windows games…'}</p>}
-      <PagedList className="pm-windows-list" items={shownGames} render={game => <WindowsGameCard key={game.id} focused={Boolean(selectedId)} monitoring={monitoredGame===game.id} onMonitor={enabled=>setMonitoredGame(enabled?game.id:null)} game={game} runtimes={library.runtimes} busy={busy} run={run} remember={remember} refresh={refresh} notify={setNotice} forget={id => setLibrary(old => ({ ...old, games: old.games.filter(g => g.id !== id) }))}/>}/>
+      <PagedList className="pm-windows-list" items={shownGames} render={game => <WindowsGameCard key={game.id} focused={Boolean(selectedId)} monitoring={monitoredGame===game.id} onMonitor={enabled=>setMonitoredGame(enabled?game.id:null)} game={game} runtimes={library.runtimes} busy={busy} run={run} remember={remember} refresh={refresh} notify={setNotice} onTrackInstall={!selectedId ? id => { setMode('install'); setApproved(false); trackInstaller(id); } : undefined}
+        forget={id => { if (lastInstallerId === id) trackInstaller(undefined); setLibrary(old => ({ ...old, games: old.games.filter(g => g.id !== id) })); }}/>}/>
       {!selectedId&&!!library.removedGames?.length && <details className="pm-update-details"><summary>Removed games ({library.removedGames.length})</summary><p>Game files and prefixes are kept. Restore a game to show it in this list again.</p><div className="pm-removed-games">{library.removedGames.map(game => <div className="pm-removed-game" key={game.id}><span>{game.name}</span><button disabled={busy || isRunning(game)} className="pm-button pm-button-secondary" onClick={() => void run(async () => { await invoke('set_windows_game_hidden', { id: game.id, hidden: false, confirmed: true }); await refresh(); })}>Restore {game.name}</button></div>)}</div></details>}
 
     </section>
   </>;
 }
 
-function WindowsGameCard({ game, runtimes, busy, run, remember, refresh, notify, forget, monitoring, onMonitor, focused }: { focused: boolean; monitoring:boolean; onMonitor:(enabled:boolean)=>void; game: Game; runtimes: Runtime[]; busy: boolean; run: (task: () => Promise<void>) => Promise<void>; remember: (game: Game) => void; refresh: () => Promise<void>; notify: (message: string) => void; forget: (id: string) => void }) {
+function WindowsGameCard({ game, runtimes, busy, run, remember, refresh, notify, forget, monitoring, onMonitor, focused, onTrackInstall }: { onTrackInstall?: (id: string) => void; focused: boolean; monitoring:boolean; onMonitor:(enabled:boolean)=>void; game: Game; runtimes: Runtime[]; busy: boolean; run: (task: () => Promise<void>) => Promise<void>; remember: (game: Game) => void; refresh: () => Promise<void>; notify: (message: string) => void; forget: (id: string) => void }) {
   const [search, setSearch] = useState<ExecutableSearch | null>(null);
   const [candidate, setCandidate] = useState('');
   const [name, setName] = useState(game.name);
@@ -209,6 +297,8 @@ function WindowsGameCard({ game, runtimes, busy, run, remember, refresh, notify,
     </form>}
     {removing && <div className="pm-remove-confirm" role="group" aria-label={`Confirm removal of ${game.name}`}><p>Remove <strong>{game.name}</strong> from this list? Game files, prefixes, and desktop shortcuts are kept. You can restore it from Removed games.</p><div className="pm-button-row"><button className="pm-button pm-button-secondary" disabled={busy || running} onClick={() => void run(async () => { await invoke('set_windows_game_hidden', { id: game.id, hidden: true, confirmed: true }); forget(game.id); await refresh(); })}>Confirm removal</button><button className="pm-button pm-button-secondary" disabled={busy} onClick={() => setRemoving(false)}>Cancel</button></div></div>}
     <p>{game.message}</p>
+    {onTrackInstall && !game.gameExe && (canRetryInstall(game) || game.state === 'installer-running' || game.state === 'installer-exited') &&
+      <button type="button" className="pm-button pm-button-secondary" disabled={busy} onClick={() => onTrackInstall(game.id)}>{game.state === 'installer-exited' ? 'Open Finish step' : 'Open installer status'}</button>}
     {game.state==='installer-exited'&&!game.gameExe&&<InstallationAssistant game={game} busy={busy} run={run} onConfirm={async(name,path,shortcut)=>{
       remember(await invoke<Game>('confirm_windows_installation',{id:game.id,name,path,confirmed:true}));await refresh();notify('Game saved. Launch it when you are ready to test.');
       if(shortcut){try{await invoke('create_windows_game_shortcut',{id:game.id,confirmed:true});notify('Game saved. Desktop and applications-menu shortcuts created.');}catch(error){throw new Error('Game saved, but shortcut creation failed: '+String(error)+'. Use Create desktop shortcut to retry.');}}

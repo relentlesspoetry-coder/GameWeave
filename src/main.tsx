@@ -11,11 +11,15 @@ class StartupBoundary extends React.Component<React.PropsWithChildren, {error:st
   state:{error:string|null}={error:null};
   static getDerivedStateFromError(error:unknown){return {error:String(error)};}
   componentDidCatch(error:Error){void invoke('startup_diagnostic',{message:'React render failed: '+error.message}).catch(()=>{});}
-  render(){return this.state.error ? <div role="alert" style={{padding:32,color:'white',background:'#102943'}}>Gameweave could not render: {this.state.error}</div> : this.props.children;}
+  render(){return this.state.error ? <div role="alert" style={{padding:32,color:'white',background:'#102943'}}>GameWeave could not render: {this.state.error}</div> : this.props.children;}
 }
 function Startup(){
   useEffect(()=>{const banner=document.getElementById('startup-status');if(banner)banner.hidden=true;
     void invoke('startup_diagnostic',{message:'React committed application UI'}).catch(()=>{});
+    // The version probe only proves executable startup. A separately launched
+    // updater child reports ready after the real interface reaches its first frame.
+    const frame=requestAnimationFrame(()=>{void invoke('startup_ready').catch(()=>{});});
+    return ()=>cancelAnimationFrame(frame);
   },[]);
   return <App/>;
 }

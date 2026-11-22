@@ -220,11 +220,55 @@ struct LaunchSpec {
     stderr_fd: i32,
     session: crate::windows_games::SupervisedSession,
 }
+pub(crate) enum Startup { Started, Failed, NoRuntime, Unconfirmed }
+pub(crate) struct RuntimeChild { pub child: Child, pub startup: Startup }
+
+fn startup_status(reader: &mut std::os::unix::net::UnixStream, timeout: Duration) -> Startup {
+    use std::time::Instant;
+    let deadline=Instant::now()+timeout;
+    let mut bytes=[0;8];
+    let mut used=0;
+    loop {
+        let remaining=deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() || used==bytes.len() || reader.set_read_timeout(Some(remaining)).is_err() {
+            return Startup::Unconfirmed;
+        }
+        match reader.read(&mut bytes[used..]) {
+            Ok(0)=>return match &bytes[..used] {
+                b"started"=>Startup::Started,
+                b"failed"=>Startup::Failed,
+                b"notrun"=>Startup::NoRuntime,
+                _=>Startup::Unconfirmed,
+            },
+            Ok(count)=>used+=count,
+            Err(error) if error.kind()==io::ErrorKind::Interrupted=>continue,
+            Err(_)=>return Startup::Unconfirmed,
+        }
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn startup_receipt_deadline_does_not_wait_for_the_supervisor_to_exit() {
+    use std::os::unix::net::UnixStream;
+    let (mut reader, mut writer)=UnixStream::pair().unwrap();
+    writer.write_all(b"start").unwrap();
+    assert!(matches!(startup_status(&mut reader,Duration::from_millis(25)),Startup::Unconfirmed));
+    // The helper could still own the connection and all leases at the deadline.
+    writer.write_all(b"ed").unwrap();
+    let (mut reader, mut writer)=UnixStream::pair().unwrap();
+    writer.write_all(b"started").unwrap();drop(writer);
+    assert!(matches!(startup_status(&mut reader,Duration::from_secs(1)),Startup::Started));
+    let (mut reader, mut writer)=UnixStream::pair().unwrap();
+    writer.write_all(b"failed").unwrap();drop(writer);
+    assert!(matches!(startup_status(&mut reader,Duration::from_secs(1)),Startup::Failed));
+}
+
 pub(crate) fn spawn_runtime(command: &mut std::process::Command,
     session: &crate::windows_games::SupervisedSession, leases: &[i32], stdout: &File, stderr: &File,
-) -> io::Result<Child> {
+) -> io::Result<RuntimeChild> {
     // Packaged integration tests exercise re-exec; unit fixtures use their test runtime directly.
-    #[cfg(test)] { let _=(session,leases,stdout,stderr); return command.spawn(); }
+    #[cfg(test)] { let _=(session,leases,stdout,stderr); return command.spawn().map(|child|RuntimeChild{child,startup:Startup::Started}); }
     #[cfg(not(test))] {
         use std::os::unix::{process::CommandExt, net::UnixStream};
         let (mut reader, writer) = UnixStream::pair()?;
@@ -248,15 +292,12 @@ pub(crate) fn spawn_runtime(command: &mut std::process::Command,
             }
             Ok(())
         }); }
-        let mut child = helper.spawn()?;
+        let child = helper.spawn()?;
         drop(writer);
-        let mut acknowledgment=String::new();
-        let read=reader.read_to_string(&mut acknowledgment);
-        if read.is_ok() && acknowledgment=="started" { return Ok(child); }
-        // Keep parent leases until an unacknowledged helper has finished too.
-        let _=child.wait();
-        read?;
-        Err(io::Error::other(if acknowledgment.is_empty() { "Runtime supervisor could not start".into() } else { acknowledgment }))
+        // The helper still owns the leases and completion receipt after this
+        // deadline. A lost acknowledgment is not proof that launch failed.
+        let startup=startup_status(&mut reader,Duration::from_secs(3));
+        Ok(RuntimeChild{child,startup})
     }
 }
 fn wait_for_runtime_family(primary: libc::pid_t, logs: &std::path::Path) -> io::Result<i32> {
@@ -353,8 +394,14 @@ pub fn handle_cli() -> Option<i32> {
                 session.completion_warning(Some(&persist_error));thread::sleep(Duration::from_secs(1));
             }
             session.completion_warning(None);
+            // A failure acknowledgment means the durable receipt is already
+            // available. If its write is delayed the parent stays unconfirmed.
+            if let Some(mut acknowledgment)=acknowledgment.take(){let _=acknowledgment.write_all(b"failed");}
+        } else if let Some(mut acknowledgment)=acknowledgment.take() {
+            // Setup failed before the runtime could be spawned and before the
+            // supervisor accepted responsibility for the profile receipt.
+            let _=acknowledgment.write_all(b"notrun");
         }
-        if let Some(mut acknowledgment)=acknowledgment.take(){let _=write!(acknowledgment,"{error}");}
         125
     }})
 }

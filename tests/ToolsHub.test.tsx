@@ -43,7 +43,9 @@ it('shows actual inventory, filters tools, switches grid/list and only opens ext
   fireEvent.change(screen.getByRole('textbox',{name:'Search tools'}),{target:{value:'shortcut'}});
   expect(screen.queryByRole('button',{name:/Repair Game/})).toBeNull();
   pick('Windows Example (Windows)');
-  fireEvent.click(screen.getByRole('button',{name:/Create Shortcut/}));
+  expect(screen.getAllByRole('button',{name:/Open Windows game details/})).toHaveLength(1);
+  expect(screen.queryByRole('button',{name:/Optimize Game|Configure Proton|Create Shortcut/})).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:/Open Windows game details/}));
   expect(input.onOpenWindows).toHaveBeenCalledWith(windowsGame);
   expect(invoke.mock.calls.some(([cmd])=>cmd==='create_windows_game_shortcut')).toBe(false);
   fireEvent.click(screen.getByRole('button',{name:'System'}));
@@ -59,7 +61,7 @@ it('uses read-only diagnostics for real games and keeps repair behind its existi
   expect(screen.getByText('Proton prefix: Not found')).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'Run scan'}));
   expect(input.onScan).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByRole('button',{name:'Cache & prefix'}));
+  fireEvent.click(screen.getByRole('button',{name:/Clean Prefix/}));
   fireEvent.click(screen.getByRole('button',{name:/Rebuild Proton environment/}));
   await screen.findByText('Rebuild Preview');
   expect(invoke).toHaveBeenCalledWith('preview_repair',{appId:'42',libraryPath:'/steam',action:'proton-prefix'});
@@ -78,9 +80,22 @@ it('never silently moves repair controls to another game when the chosen game di
   const view = render(<ToolsHub {...input}/>);
   await screen.findByRole('option',{name:'Windows Example (Windows)'});
   pick('Steam Example (Steam)');
-  fireEvent.click(screen.getByRole('button',{name:'Cache & prefix'}));
+  fireEvent.click(screen.getByRole('button',{name:/Clean Prefix/}));
   view.rerender(<ToolsHub {...input} steam={[]}/>);
   expect((screen.getByRole('combobox',{name:'Game for tools'}) as HTMLSelectElement).value).toBe('');
   expect(screen.queryByRole('region',{name:'Selected game action'})).toBeNull();
   expect((screen.getByRole('button',{name:'Run scan'}) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it('opens approved backup controls when a Steam game is selected from the Backups category',async()=>{
+ render(<ToolsHub {...props()}/>);
+ await screen.findByRole('option',{name:'Windows Example (Windows)'});
+ fireEvent.click(screen.getByRole('button',{name:'Backups',exact:true}));
+ pick('Steam Example (Steam)');
+ expect(screen.getByRole('region',{name:'Selected game action'})).toBeTruthy();
+ expect(screen.getByRole('button',{name:/Rebuild Proton environment/})).toBeTruthy();
+ expect(invoke.mock.calls.some(([cmd])=>cmd==='apply_repair')).toBe(false);
+ pick('Windows Example (Windows)');
+ expect(screen.queryByRole('region',{name:'Selected game action'})).toBeNull();
+ expect(screen.getByText(/Select a Steam game to review/)).toBeTruthy();
 });

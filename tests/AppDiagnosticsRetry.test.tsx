@@ -44,7 +44,7 @@ it('preserves selected game when a requested scan fails and allows retry',async(
   return null;
  });
  render(<App/>);
- fireEvent.click(await screen.findByRole('button',{name:'Game settings for Retained Game (Steam)'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Open Retained Game (Steam)'}));
  fireEvent.click(await screen.findByRole('button',{name:'Scan Again'}));
  await screen.findByText('Could not scan Steam libraries: Error: scan fixture failure');
  expect(screen.getByRole('heading',{name:'Retained Game',exact:true})).toBeTruthy();

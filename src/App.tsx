@@ -14,7 +14,7 @@ import { GameDiagnosis } from './Diagnostics';
 import { RepairTools } from './Repairs';
 import { ProtonAdvisor } from './ProtonAdvisor';
 import { WindowsGames } from './WindowsGames';
-import { UnifiedLibrary, type LibraryFilter, type LibrarySource, type LibrarySort } from './UnifiedLibrary';
+import { UnifiedLibrary, type LibraryFilter, type LibrarySource, type LibrarySort, type LibraryViewMode } from './UnifiedLibrary';
 import { AutoLogMonitor } from './AutoLogMonitor';
 import { useAutoFixControl } from './useAutoFixControl';
 import { ActiveFixSessions } from './ActiveFixSessions';
@@ -23,7 +23,7 @@ import { AppUpdater } from './AppUpdater';
 import { PagedList } from './PagedList';
 import { SteamGameDetail } from './gameweave/GameDetailLayout';
 import { GameIcon } from './GameIcon';
-import { LaunchTest } from './LaunchTest';
+import { LaunchObservationProvider, LatestLaunchObservation, LaunchTest } from './LaunchTest';
 import { AppearanceSettings } from './gameweave/AppearanceSettings';
 import { GlassRibbon } from './gameweave/GlassRibbon';
 import { GameweaveBrand } from './gameweave/GameweaveBrand';
@@ -60,7 +60,11 @@ function StatusTag({ label, tone }: { label: string; tone: 'error' | 'warning' |
   return <span className={`pm-tag ${tone}`}>{tone === 'ok' ? <CheckCircle2 size={14}/> : tone === 'neutral' ? <CircleHelp size={14}/> : <AlertCircle size={14}/>} {label}</span>;
 }
 
-export default function App() {
+export default function GameWeaveApp() {
+  return <LaunchObservationProvider><App/></LaunchObservationProvider>;
+}
+
+function App() {
   const [page, setPage] = useState<Page>('games');
   const [appearance, setAppearance] = useState<Appearance>(readAppearance);
   const [appearanceError, setAppearanceError] = useState('');
@@ -87,7 +91,20 @@ export default function App() {
   const [filter, setFilter] = useState<LibraryFilter>('all');
   const [librarySource,setLibrarySource]=useState<LibrarySource>('all');
   const [librarySort,setLibrarySort]=useState<LibrarySort>('name');
+  const [libraryView,setLibraryView]=useState<LibraryViewMode>('grid');
+  const [librarySelection,setLibrarySelection]=useState<string|null>(null);
+  const [recentOnly,setRecentOnly]=useState(false);
   const [selectedWindowsId,setSelectedWindowsId]=useState<string|undefined>();
+  const workspace = useRef<HTMLElement>(null);
+  const lastGameRoute = useRef<string|null>(null);
+  useEffect(() => {
+    const route = page === 'games' ? selectedWindowsId ? `windows:${selectedWindowsId}` : selectedKey ? `steam:${selectedKey}` : 'library' : null;
+    const previous = lastGameRoute.current;
+    lastGameRoute.current = route;
+    if (route === null || route === previous || (route === 'library' && previous === null)) return;
+    const target = workspace.current?.querySelector<HTMLElement>('h1') ?? workspace.current;
+    if (target) { target.tabIndex = -1; target.focus(); }
+  }, [page, selectedKey, selectedWindowsId]);
   const taskId = useRef(0);
   const analysisId = useRef(0);
   const advisorId = useRef(0);
@@ -197,8 +214,8 @@ export default function App() {
   const selectedAdvice = selectedGame ? advice?.games.find(a => a.appId === selectedGame.appId && a.libraryPath === selectedGame.libraryPath) : undefined;
   const selectedDiagnosis = selectedGame ? issueByGame.get(gameKey(selectedGame)) ?? null : null;
   const openGame = (game: Game) => { setSelectedWindowsId(undefined); setSelectedKey(gameKey(game)); setPage('games'); };
-  const showProblems = () => { setLibraryPage(0); setSelectedWindowsId(undefined); setLibrarySource('all'); setSelectedKey(null); setQuery(''); setFilter('issues'); setPage('games'); };
-  const showAllGames = () => { setLibraryPage(0); setSelectedWindowsId(undefined); setLibrarySource('all'); setSelectedKey(null); setQuery(''); setFilter('all'); setPage('games'); };
+  const showProblems = () => { setLibraryPage(0); setRecentOnly(false); setSelectedWindowsId(undefined); setLibrarySource('all'); setSelectedKey(null); setQuery(''); setFilter('issues'); setPage('games'); };
+  const showAllGames = () => { setLibraryPage(0); setRecentOnly(false); setSelectedWindowsId(undefined); setLibrarySource('all'); setSelectedKey(null); setQuery(''); setFilter('all'); setPage('games'); };
   const status = !scan ? 'Not scanned' : scan.installations.length ? 'Steam detected' : 'Steam not found';
 
   return <div className="pm-app" style={themeVariables(appearance.theme) as CSSProperties} data-gw-theme={appearance.theme} data-gw-glass={appearance.glass} data-gw-motion={appearance.reduceMotion ? 'reduced' : 'full'}>
@@ -220,9 +237,10 @@ export default function App() {
       </nav>
       <div className="gw-system-card"><Monitor size={17} aria-hidden="true"/><div><strong>{status}</strong><span>{scan ? `${scan.compatibilityTools.length} Steam compatibility tools` : 'Scan Library to discover games'}</span></div></div>
     </aside>
-    <main className="pm-main">
+    <main className="pm-main" ref={workspace}>
       <div className="pm-workspace-header"><AppUpdater/></div>
       <ActiveFixSessions/>
+      <LatestLaunchObservation/>
       {error && <div className="pm-error" role="alert"><AlertTriangle size={18}/><p>{error.message}</p><button type="button" onClick={() => setError(null)} aria-label="Dismiss error"><X size={17}/></button></div>}
       {page === 'home' && <>
         <div className="pm-welcome"><div><span className="pm-eyebrow">Your gaming workspace</span><h1>Ready for your<br/><span>next game.</span></h1><p>One place for your library, Proton, and game repairs.</p></div><button className="pm-button pm-button-primary pm-scan-action" onClick={() => void scanGames()} disabled={loading}>{loading ? <RefreshCw size={18} className="pm-spin"/> : <Search size={18}/>} {loading ? 'Scanning library…' : 'Scan your library'}</button></div>
@@ -281,6 +299,8 @@ export default function App() {
             </> },
           ]}/> : <UnifiedLibrary steam={scan?.games??[]} steamLoading={loading} scanAvailable={!!scan} refreshKey={lastScan?.getTime()??0} problemKeys={problemKeys}
           page={libraryPage} onPageChange={setLibraryPage}
+          viewMode={libraryView} onViewMode={setLibraryView} selectedItemKey={librarySelection} onSelectedItemKey={setLibrarySelection}
+          recentOnly={recentOnly} onRecentOnly={value => { setRecentOnly(value); setLibraryPage(0); }}
           query={query} onQuery={value => { setQuery(value); setLibraryPage(0); }} filter={filter} onFilter={value => { setFilter(value); setLibraryPage(0); }} source={librarySource} onSource={value => { setLibrarySource(value); setLibraryPage(0); }} sort={librarySort} onSort={value => { setLibrarySort(value); setLibraryPage(0); }}
           onAddGame={() => setPage('windows')} onScan={() => void scanGames()} scanning={loading}
           onSteam={openGame} onWindows={game=>{setSelectedKey(null);setSelectedWindowsId(game.id);}} steamStatus={game=><StatusTag {...getIssue(game,issueByGame.get(gameKey(game)))}/>}/>}
