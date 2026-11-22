@@ -127,4 +127,4 @@ jobs:
             fi
           fi
           python3 scripts/release_tag.py
-          gh release create "$RELEASE_TAG" release/* --verify-tag --title "Proton Medic $RELEASE_TAG" --notes-file "RELEASE-$RELEASE_TAG.md" --latest
+          gh release create "$RELEASE_TAG" release/* --verify-tag --title "GameWeave $RELEASE_TAG" --notes-file "RELEASE-$RELEASE_TAG.md" --latest

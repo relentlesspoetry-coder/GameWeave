@@ -120,7 +120,7 @@ if (( ${#packages[@]} == 0 )); then
   exit 1
 fi
 for pkg in "${packages[@]}"; do
-  dpkg-deb --info "$pkg" >/dev/null
+  python3 scripts/desktop_branding.py "$pkg"
   echo "[PASS] Built package: $pkg"
   sha256sum "$pkg"
 done

@@ -34,7 +34,7 @@ export function LaunchHistory({game}:{game:Game}) {
   return <details className="pm-update-details pm-launch-history" onToggle={event=>setExpanded(event.currentTarget.open)}>
     <summary>Launch history</summary>
     {expanded&&<section aria-label={`Launch history for ${game.name}`} aria-busy={loading}>
-      <div className="pm-history-heading"><p>Latest 20 runs from Proton Medic and its shortcuts. Runtime exit codes do not confirm gameplay.</p><button className="pm-button pm-button-secondary" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Refresh history</button></div>
+      <div className="pm-history-heading"><p>Latest 20 runs from GameWeave and its shortcuts. Runtime exit codes do not confirm gameplay.</p><button className="pm-button pm-button-secondary" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Refresh history</button></div>
       {loading&&!history&&<p role="status">Loading launch history…</p>}
       {error&&<p role="alert">Could not load launch history: {error}. Use Refresh history to retry.</p>}
       {history?.warnings.map(warning=><p role="alert" key={warning}>{warning}</p>)}

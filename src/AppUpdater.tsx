@@ -76,16 +76,16 @@ export function AppUpdater() {
       }, { timeout: 300000 });
       setInstalled(true); setVersion(''); setApproved(false);
       completed = true;
-      setMessage('Update installed. Reopening Proton Medic…');
+      setMessage('Update installed. Reopening GameWeave…');
       await invoke('restart_after_update', { version: update.version });
     } catch (e) {
       setApproved(false);
       if (completed) {
         setMessage('Update installed.');
-        setError('The update installed, but Proton Medic could not open the new version. Open Proton Medic from your applications menu.');
+        setError('The update installed, but GameWeave could not open the new version. Open GameWeave from your applications menu.');
       } else {
         setMessage(''); setError(prepared ? 'Update did not complete. You can try again.' : String(e));
-        if (prepared) { try { await invoke('cancel_app_update'); } catch { setError('Update stopped. Close and reopen Proton Medic before continuing.'); } }
+        if (prepared) { try { await invoke('cancel_app_update'); } catch { setError('Update stopped. Close and reopen GameWeave before continuing.'); } }
       }
       setTechnicalError(String(e));
     } finally { locked.current = false; setBusy(false); }
@@ -94,7 +94,7 @@ export function AppUpdater() {
   return <header className="pm-app-header">
     <dialog ref={dialog} className="pm-update-dialog" aria-labelledby={`${panelId}-stop-title`} aria-describedby={`${panelId}-stop-description`} onCancel={event => { event.preventDefault(); keepRunning(); }}>
       <h2 id={`${panelId}-stop-title`}>Close active sessions to update?</h2>
-      <p id={`${panelId}-stop-description`}>These games or installers are using Proton Medic. Stopping them can lose unsaved progress or leave an installation incomplete.</p>
+      <p id={`${panelId}-stop-description`}>These games or installers are using GameWeave. Stopping them can lose unsaved progress or leave an installation incomplete.</p>
       <ul>{sessions?.map(session => <li key={`${session.id}:${session.runId}`}><strong>{session.name}</strong> — {session.kind === 'installer' ? 'Installer' : 'Game'}</li>)}</ul>
       {sessions?.some(session => !session.canStop) && <p>Some sessions were started by an older version. Close them manually, then retry the update.</p>}
       <div className="pm-update-dialog-actions">
@@ -111,18 +111,18 @@ export function AppUpdater() {
     </div>
     <section id={panelId} hidden={!expanded} className="pm-section pm-updater" aria-label="App updates">
     <div className="pm-section-heading">
-      <div className="pm-update-heading"><span className="pm-update-icon" aria-hidden="true"><Download/></span><div><h2>App updates</h2><p>Keep Proton Medic up to date.</p></div></div>
+      <div className="pm-update-heading"><span className="pm-update-icon" aria-hidden="true"><Download/></span><div><h2>App updates</h2><p>Keep GameWeave up to date.</p></div></div>
       <button type="button" className="pm-button pm-button-secondary pm-update-info" aria-label="Close update details" onClick={() => setExpanded(false)}><X size={17}/></button>
     </div>
     {message && message !== 'Check GitHub for the latest stable release.' && <div role="status" className="pm-update-status"><p>{message}</p></div>}
     {error && <div role="alert" className="pm-update-status"><p>{error}</p><details className="pm-update-details"><summary>Technical details</summary><pre>{technicalError}</pre></details></div>}
     {version && <>
       {notes && <details className="pm-update-details"><summary>What changed</summary><pre style={{whiteSpace:'pre-wrap'}}>{notes}</pre></details>}
-      <label className="pm-launch-consent"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)}/><span>I approve installing the update and automatically reopening Proton Medic.</span></label>
+      <label className="pm-launch-consent"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)}/><span>I approve installing the update and automatically reopening GameWeave.</span></label>
       <button className="pm-button pm-button-primary" disabled={!approved || busy || !!sessions} onClick={() => void install()}><Download size={17}/>Download &amp; install {version}</button>
     </>}
     <p className="pm-update-footer">Signed updates from GitHub. You choose when to install.</p>
-    <details className="pm-update-details"><summary>How updates work</summary><p>Checks contact GitHub only when requested. Downloads are signature-verified before installation. System packages may require administrator approval. After installation, Proton Medic reopens automatically to load the new version.</p></details>
+    <details className="pm-update-details"><summary>How updates work</summary><p>Checks contact GitHub only when requested. Downloads are signature-verified before installation. System packages may require administrator approval. After installation, GameWeave reopens automatically to load the new version.</p></details>
     </section>
   </header>;
 }

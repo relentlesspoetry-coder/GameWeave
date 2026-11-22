@@ -88,7 +88,7 @@ export function ProtonManager({ onChanged }: { onChanged: () => void }) {
         {installing && <button className="pm-button pm-button-secondary" disabled={canceling || busy} onClick={() => void run(async () => { setCanceling(true); try { await invoke('cancel_proton_download'); } catch (error) { if (alive.current) setCanceling(false); throw error; } })}>{canceling ? 'Cancel requested…' : 'Cancel download'}</button>}
       </div>}
       {error && <p className="pm-repair-danger" role="alert">{error}</p>}{readError && <p className="pm-repair-danger" role="alert">{readError}</p>}
-      {installing && <p className="pm-report-help">Keep Proton Medic open until installation finishes.</p>}
+      {installing && <p className="pm-report-help">Keep GameWeave open until installation finishes.</p>}
       {local?.status?.phase === 'installed' && <p className="pm-report-help">Restart Steam to use the new version.</p>}
     </section>
     <section className="pm-section"><h2>Installed versions{local ? ` (${local.tools.length})` : ''}</h2>

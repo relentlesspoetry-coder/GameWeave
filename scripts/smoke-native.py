@@ -39,14 +39,14 @@ with tempfile.TemporaryDirectory(prefix='proton-medic-native-smoke-') as tmp:
         while time.monotonic() < deadline:
             if process.poll() is not None:
                 raise RuntimeError(f'Native process exited early: {process.returncode}')
-            found = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', 'Proton Medic'],
+            found = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', '^GameWeave$'],
                                    capture_output=True, text=True)
             if found.returncode == 0:
                 window = found.stdout.splitlines()[0]
                 break
             time.sleep(0.25)
         if window is None:
-            raise RuntimeError('No visible Proton Medic window within 30 seconds')
+            raise RuntimeError('No visible GameWeave window within 30 seconds')
         time.sleep(5)
         if process.poll() is not None:
             raise RuntimeError('Native process exited before capture')

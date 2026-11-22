@@ -127,7 +127,7 @@ def capture_failure(output):
         print(f'Could not read native log: {error}', file=sys.stderr)
 
 
-DIALOG = '^Force quit Proton Medic\\?$'
+DIALOG = '^Force quit GameWeave\\?$'
 
 
 def click_button(window, confirm):
@@ -233,7 +233,7 @@ def main():
                     def visible_while_alive(title):
                         preserved()
                         return windows(title)
-                    main_window = wait_for(lambda: visible_while_alive('^Proton Medic$'),
+                    main_window = wait_for(lambda: visible_while_alive('^GameWeave$'),
                                            'Main window did not appear')[0]
                     time.sleep(1)
                     def dialog():
@@ -265,7 +265,7 @@ def main():
                     wait_for(lambda: shortcut.poll() is not None, 'Shortcut did not exit after Force Quit', 10)
                     assert not alive(pid, start), 'TERM-resistant owned runtime survived'
                     assert unrelated.poll() is None, 'Force Quit killed an unrelated process'
-                    assert not windows('^Proton Medic$') and not windows(DIALOG), 'GUI windows survived'
+                    assert not windows('^GameWeave$') and not windows(DIALOG), 'GUI windows survived'
                     saved = json.loads((profile/'profile.json').read_text())
                     assert not saved['state'].endswith('running'), 'Profile remained running'
                     print('PASS: Keep Open, dismissal, single dialog, forced runtime shutdown, unrelated process safety')

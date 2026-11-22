@@ -25,7 +25,7 @@ def manifest(version, tag, package, signature, repository, appimage=None, appima
         raise ValueError('Signature must be bound to the release version')
     result = {
         'version': version,
-        'notes': f'Proton Medic {version}. See the GitHub release for changes.',
+        'notes': f'GameWeave {version}. See the GitHub release for changes.',
         'pub_date': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'platforms': {'linux-x86_64-deb': {
             'signature': signature.strip(),
