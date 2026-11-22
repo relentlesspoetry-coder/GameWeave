@@ -107,22 +107,28 @@ let browser;
     const normal=getComputedStyle(document.querySelector('.pm-nav-link:not(.active)'));
     const rgb=key=>app.getPropertyValue(key).trim().split(/\s*,\s*/).join(', ');
     const first=rgb('--gw-rgb'),second=rgb('--gw-tail-rgb');
+    const sidebar=getComputedStyle(document.querySelector('.pm-sidebar'));
     const ribbon=document.querySelector('.gw-glass-ribbon-rail');
     const secondStop=getComputedStyle(ribbon.querySelectorAll('stop')[2]).stopColor;
     const hasBothHues=style=>style.backgroundImage.includes(first)&&style.backgroundImage.includes(second);
     const probe=document.createElement('span');
     probe.style.color=app.getPropertyValue('--gw-secondary').trim();
     button.append(probe);const secondary=getComputedStyle(probe).color;probe.remove();
-    return {carbonFade:app.backgroundAttachment.split(',').every(layer=>layer.trim()==='fixed')&&app.backgroundImage.includes('rgb(8, 11, 12)')&&app.backgroundImage.includes(first+', 0.29)'),gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
+    return {smoothFade:app.backgroundAttachment.split(',').every(layer=>layer.trim()==='fixed')&&app.backgroundImage.includes('rgb(8, 11, 12)')&&
+      [0.035,0.078,0.144,0.211,0.263,0.29].every(alpha=>app.backgroundImage.includes(first+', '+alpha+')'))&&
+      [0.055,0.105,0.145].every(alpha=>sidebar.backgroundImage.includes(first+', '+alpha+')')),gradient:hasBothHues(app)&&hasBothHues(primary)&&hasBothHues(normal),
       accent:icon.color===secondary,
       reflection:primary.backgroundImage.includes('radial-gradient')&&primary.boxShadow.includes('inset'),
       ribbon:secondStop===secondary&&ribbon.getAttribute('aria-hidden')==='true'&&getComputedStyle(ribbon).pointerEvents==='none', radius:primary.borderTopLeftRadius, glass:primary.backdropFilter, normalGlass:normal.backdropFilter};
   });
   if(!palette.gradient||!palette.accent||!palette.reflection||!palette.ribbon||parseFloat(palette.radius)>9||!palette.glass.startsWith('blur(')||!palette.normalGlass.startsWith('blur('))throw Error('Inconsistent dual-color glass theme for '+id+': '+JSON.stringify(palette));
-  if(id==='carbon-green'&&!palette.carbonFade)throw Error('Carbon Green must keep the carbon-to-logo-green background visible throughout the viewport');
+  if(!palette.smoothFade)throw Error('Theme must keep the graduated carbon-to-logo fade across the viewport and sidebar: '+id);
   const themeAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   results.push({width:1440,name:'Theme: '+id,violations:themeAudit.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:path.join(output,`gameweave-theme-${id}.jpg`),type:'jpeg',quality:88});
+  await nav.getByRole('button',{name:'Settings',exact:true}).click();
+  await page.getByRole('radio',{name:label,exact:true}).waitFor({state:'visible'});
+  await page.screenshot({path:path.join(output,`gameweave-settings-${id}.png`)});
 
  }
 

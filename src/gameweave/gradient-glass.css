@@ -46,6 +46,26 @@
   background:linear-gradient(154deg,#090d0f 0%,#080e0f 23%,#081310 47%,
     rgba(var(--gw-rgb),.055) 64%,rgba(var(--gw-rgb),.105) 83%,rgba(var(--gw-rgb),.145) 100%),#070d0d;
 }
+/* Keep the same carbon foundation and gradual rise as Carbon Green.
+   The secondary logo hue is a softer wash, not a second bright edge. */
+.pm-app:is([data-gw-theme="cyan-purple"],[data-gw-theme="red-orange-gold"],[data-gw-theme="teal-green-gold"]) {
+  background:
+    radial-gradient(ellipse at 13% 99%,rgba(var(--gw-tail-rgb),.095) 0%,rgba(var(--gw-tail-rgb),.050) 29%,
+      rgba(var(--gw-tail-rgb),.017) 49%,transparent 71%),
+    linear-gradient(145deg,#080b0c 0%,#090d0f 14%,#0a1012 28%,
+      rgba(var(--gw-rgb),.035) 40%,rgba(var(--gw-rgb),.078) 52%,
+      rgba(var(--gw-rgb),.144) 64%,rgba(var(--gw-rgb),.211) 76%,
+      rgba(var(--gw-rgb),.263) 88%,rgba(var(--gw-rgb),.29) 100%),
+    #080e0e;
+  background-attachment:fixed;
+}
+.pm-app:is([data-gw-theme="cyan-purple"],[data-gw-theme="red-orange-gold"],[data-gw-theme="teal-green-gold"]) .pm-sidebar {
+  background:
+    radial-gradient(ellipse at 9% 100%,rgba(var(--gw-tail-rgb),.050),transparent 66%),
+    linear-gradient(154deg,#090d0f 0%,#080e0f 23%,#091115 47%,
+      rgba(var(--gw-rgb),.055) 64%,rgba(var(--gw-rgb),.105) 83%,rgba(var(--gw-rgb),.145) 100%),
+    #070d0d;
+}
 .pm-app .pm-sidebar::before { display:none; }
 .gw-glass-ribbon { pointer-events:none; position:absolute; inset:0 0 auto; width:100%; }
 .gw-glass-ribbon-rail { height:100%; z-index:-1; }
