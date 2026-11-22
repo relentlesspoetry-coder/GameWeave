@@ -152,23 +152,26 @@ let browser;
   });
   if(!motion||motion[0]===motion[1]||motion[0]!==motion[2])throw Error('Current must travel and return smoothly: '+id);
   await current.evaluate(path=>path.getAnimations().forEach(a=>a.play()));
-  const crest=page.locator('.gw-glass-ribbon-workspace .gw-current-crest');
-  const travel=await crest.evaluate(path=>{
-    const animation=path.getAnimations().find(a=>a.animationName==='gw-current-travel');
-    if(!animation)return null;
+  const feathered=await page.locator('.gw-glass-ribbon-workspace').evaluate(svg=>{
+    const band=svg.querySelector('.gw-current-mask-band');
+    const stops=[...svg.querySelectorAll('#gw-feather-workspace stop')].map(stop=>Number(stop.getAttribute('stop-opacity')));
+    const animation=band.getAnimations().find(a=>a.animationName==='gw-current-travel');
+    if(!animation)return false;
     animation.pause();
     const ms=animation.effect.getTiming().duration;
-    const stops=[0,ms/4,ms/2,ms].map(time=>{
+    const positions=[0,ms/4,ms/2,ms].map(time=>{
       animation.currentTime=time;
-      return parseFloat(getComputedStyle(path).strokeDashoffset);
+      return new DOMMatrix(getComputedStyle(band).transform).m41;
     });
     animation.play();
-    return stops;
+    const edge=Number(band.getAttribute('width'))/2;
+    return stops.length>=7&&stops[0]===0&&stops.at(-1)===0&&stops[1]<stops[2]&&stops[2]<stops[3]&&
+      stops[3]>stops[4]&&stops[4]>stops[5]&&positions[0]+edge<0&&
+      positions[1]>positions[0]&&positions[2]>positions[1]&&Math.abs(positions[0]-positions[3])<.5;
   });
-  if(!travel||!travel.every(Number.isFinite)||Math.abs(travel[0]-travel[1]-25)>.5||
-     Math.abs(travel[1]-travel[2]-25)>.5||Math.abs(travel[0]-travel[3])>.5)throw Error('The highlight must travel forward without a jump in its dash pattern: '+id+' '+JSON.stringify(travel));
+  if(!feathered)throw Error('Expected an offscreen-wrapping feathered light band: '+id);
   if(id==='cyan-purple'){
-   const currents=page.locator('.gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer)');
+   const currents=page.locator('.gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer,.gw-current-mask-band)');
    await page.locator('.gw-settings-theme-tile img').evaluateAll(images=>Promise.all(images.map(img=>img.decode())));
    const setTime=ms=>currents.evaluateAll((paths,ms)=>paths.forEach(path=>{
      for(const animation of path.getAnimations()){
@@ -189,10 +192,11 @@ let browser;
     if(!path)return false;
     const active=path.getAnimations().some(a=>a.animationName==='gw-current-flow'&&a.playState!=='idle');
     const style=getComputedStyle(path);
-    const crest=document.querySelector('.gw-glass-ribbon-workspace .gw-current-crest');
-    const traveling=crest.getAnimations().some(a=>a.animationName==='gw-current-travel'&&a.playState!=='idle');
+    const band=document.querySelector('.gw-glass-ribbon-workspace .gw-current-mask-band');
+    const layer=document.querySelector('.gw-glass-ribbon-workspace .gw-current-luminance');
+    const traveling=band.getAnimations().some(a=>a.animationName==='gw-current-travel'&&a.playState!=='idle');
     return expected ? active&&traveling&&style.animationName==='gw-current-flow' :
-      !active&&!traveling&&getComputedStyle(crest).display==='none'&&style.animationName==='none'&&style.transform==='none';
+      !active&&!traveling&&getComputedStyle(layer).display==='none'&&style.animationName==='none'&&style.transform==='none';
    },{selector:currentSelector,expected},{timeout:5000});
    await reduce.check();
    await page.locator('.pm-app[data-gw-motion="reduced"]').waitFor();

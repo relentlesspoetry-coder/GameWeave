@@ -73,44 +73,41 @@
   filter:drop-shadow(0 0 4px var(--gw-accent)) drop-shadow(0 0 16px var(--gw-accent));
 }
 .gw-ribbon-fill { fill:var(--gw-ribbon-spectrum); opacity:.17; }
-/* The ribbon stays behind the controls. A soft wave moves the underlying
-   curves while three phased strokes carry light forward along the same path. */
-.gw-glass-ribbon-workspace { --gw-current-x:13px; --gw-current-y:21px; --gw-current-angle:1.3deg; --gw-current-period:12s; --gw-current-travel:6s; }
-.gw-glass-ribbon-rail { --gw-current-x:-6px; --gw-current-y:17px; --gw-current-angle:-1.5deg; --gw-current-period:15s; --gw-current-travel:7.5s; }
-.gw-current-tracer { display:none; fill:none; stroke-linecap:round; vector-effect:non-scaling-stroke; }
-.gw-current-wash {
-  --gw-dash-start:-4px; stroke:var(--gw-secondary); stroke-width:8;
-  stroke-dasharray:28 72; opacity:.62;
-  filter:blur(4px) drop-shadow(0 0 7px var(--gw-accent));
+/* A feathered light field sweeps across the painted current. No moving
+   stroke has a dash or endpoint on screen: the ribbon is lit through an
+   alpha mask that is transparent at both edges. */
+.gw-glass-ribbon-workspace {
+  --gw-current-x:13px; --gw-current-y:21px; --gw-current-angle:1.3deg; --gw-current-period:12s;
+  --gw-current-travel:10s; --gw-current-echo:-5s; --gw-current-from:-320px; --gw-current-to:1780px;
 }
-.gw-current-crest {
-  --gw-dash-start:-14px; stroke:var(--gw-glint); stroke-width:2.2;
-  stroke-dasharray:13 87; opacity:.95;
-  filter:drop-shadow(0 0 4px var(--gw-secondary));
+.gw-glass-ribbon-rail {
+  --gw-current-x:-6px; --gw-current-y:17px; --gw-current-angle:-1.5deg; --gw-current-period:15s;
+  --gw-current-travel:9s; --gw-current-echo:-4.5s; --gw-current-from:-98px; --gw-current-to:372px;
 }
-.gw-current-echo {
-  --gw-dash-start:15px; stroke:var(--gw-secondary); stroke-width:1.4;
-  stroke-dasharray:17 83; opacity:.62;
-  filter:drop-shadow(0 0 3px var(--gw-accent));
-}
+.gw-current-luminance { display:none; }
+.gw-current-tracer { fill:none; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.gw-current-wash { stroke:var(--gw-secondary); stroke-width:13; opacity:.60; filter:blur(7px); }
+.gw-current-core { stroke:var(--gw-accent); stroke-width:4; opacity:.72; filter:blur(2.3px); }
 @media(prefers-reduced-motion:no-preference) {
   .pm-app[data-gw-motion="full"] .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer) {
     transform-box:view-box;
     transform-origin:center;
     animation:gw-current-flow var(--gw-current-period) ease-in-out infinite;
   }
-  .pm-app[data-gw-motion="full"] .gw-glass-ribbon .gw-current-tracer {
-    display:block;
-    animation:gw-current-flow var(--gw-current-period) ease-in-out infinite,
-      gw-current-travel var(--gw-current-travel) linear infinite;
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon .gw-current-luminance { display:block; }
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon .gw-current-mask-band {
+    animation:gw-current-travel var(--gw-current-travel) linear infinite;
+  }
+  .pm-app[data-gw-motion="full"] .gw-glass-ribbon .gw-current-mask-echo {
+    animation-delay:var(--gw-current-echo);
   }
 }
-.pm-app[data-gw-motion="reduced"] .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer) {
+.pm-app[data-gw-motion="reduced"] .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer,.gw-current-mask-band) {
   animation:none!important;
   transform:none;
 }
 @media(prefers-reduced-motion:reduce) {
-  .pm-app .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer) {
+  .pm-app .gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer,.gw-current-mask-band) {
     animation:none!important;
     transform:none;
   }
@@ -119,10 +116,10 @@
   0%,100% { transform:translate(0,0) rotate(0deg); }
   50% { transform:translate(var(--gw-current-x),var(--gw-current-y)) rotate(var(--gw-current-angle)); }
 }
-/* Each dash cycle equals one normalized path length, so wraparound is seamless. */
+/* Both bands wrap outside the clipping viewport. */
 @keyframes gw-current-travel {
-  from { stroke-dashoffset:var(--gw-dash-start); }
-  to { stroke-dashoffset:calc(var(--gw-dash-start) - 100px); }
+  from { transform:translateX(var(--gw-current-from)); }
+  to { transform:translateX(var(--gw-current-to)); }
 }
 @media(max-width:540px) {
   .gw-glass-ribbon-rail { display:none; }
