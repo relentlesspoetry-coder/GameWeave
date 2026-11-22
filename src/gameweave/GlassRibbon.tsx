@@ -1,3 +1,8 @@
+const currentPaths = {
+  rail: 'M-50 768C51 586 113 556 226 468Q277 428 316 337',
+  workspace: 'M185 205C394 93 522 12 776 55S1071 165 1464-102',
+} as const;
+
 /** Decorative vector light, drawn independently of game covers and UI controls. */
 export function GlassRibbon({ placement }: { placement: 'rail' | 'workspace' }) {
   return <svg className={'gw-glass-ribbon gw-glass-ribbon-'+placement} viewBox={placement==='rail'?'0 0 260 950':'0 0 1440 550'}
@@ -20,5 +25,8 @@ export function GlassRibbon({ placement }: { placement: 'rail' | 'workspace' }) 
       <path className="gw-ribbon-fill" d="M185 205C394 93 522 12 776 55S1071 165 1464-102C1280 126 1049 142 809 81S399 110 185 205Z"/>
       <path className="gw-ribbon-core" d="M185 205C394 93 522 12 776 55S1071 165 1464-102M292 190C457 115 595 43 809 81S1184 173 1464-102"/>
     </>}
+    {(['wash', 'crest', 'echo'] as const).map(layer =>
+      <path key={layer} className={'gw-current-tracer gw-current-' + layer}
+        d={currentPaths[placement]} pathLength={100}/>)}
   </svg>;
 }

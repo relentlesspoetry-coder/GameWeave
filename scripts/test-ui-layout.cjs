@@ -152,14 +152,33 @@ let browser;
   });
   if(!motion||motion[0]===motion[1]||motion[0]!==motion[2])throw Error('Current must travel and return smoothly: '+id);
   await current.evaluate(path=>path.getAnimations().forEach(a=>a.play()));
+  const crest=page.locator('.gw-glass-ribbon-workspace .gw-current-crest');
+  const travel=await crest.evaluate(path=>{
+    const animation=path.getAnimations().find(a=>a.animationName==='gw-current-travel');
+    if(!animation)return null;
+    animation.pause();
+    const ms=animation.effect.getTiming().duration;
+    const stops=[0,ms/4,ms/2,ms].map(time=>{
+      animation.currentTime=time;
+      return parseFloat(getComputedStyle(path).strokeDashoffset);
+    });
+    animation.play();
+    return stops;
+  });
+  if(!travel||!travel.every(Number.isFinite)||Math.abs(travel[0]-travel[1]-25)>.5||
+     Math.abs(travel[1]-travel[2]-25)>.5||Math.abs(travel[0]-travel[3])>.5)throw Error('The highlight must travel forward without a jump in its dash pattern: '+id+' '+JSON.stringify(travel));
   if(id==='cyan-purple'){
-   const currents=page.locator('.gw-glass-ribbon .gw-ribbon-core, .gw-glass-ribbon .gw-ribbon-fill');
-   const setPhase=phase=>currents.evaluateAll((paths,phase)=>paths.forEach(path=>{
-     const animation=path.getAnimations().find(a=>a.animationName==='gw-current-flow');
-     if(animation){animation.pause();animation.currentTime=animation.effect.getTiming().duration*phase;}
-   }),phase);
-   for(let frame=0;frame<16;frame++){
-    await setPhase(frame/16);
+   const currents=page.locator('.gw-glass-ribbon :is(.gw-ribbon-core,.gw-ribbon-fill,.gw-current-tracer)');
+   await page.locator('.gw-settings-theme-tile img').evaluateAll(images=>Promise.all(images.map(img=>img.decode())));
+   const setTime=ms=>currents.evaluateAll((paths,ms)=>paths.forEach(path=>{
+     for(const animation of path.getAnimations()){
+       if(animation.animationName==='gw-current-flow'||animation.animationName==='gw-current-travel'){
+         animation.pause();animation.currentTime=ms;
+       }
+     }
+   }),ms);
+   for(let frame=0;frame<48;frame++){
+    await setTime(frame*125);
     await page.screenshot({path:path.join(output,'currents-blue-'+String(frame).padStart(2,'0')+'.png')});
    }
    await currents.evaluateAll(paths=>paths.forEach(path=>path.getAnimations().forEach(a=>a.play())));
@@ -170,8 +189,10 @@ let browser;
     if(!path)return false;
     const active=path.getAnimations().some(a=>a.animationName==='gw-current-flow'&&a.playState!=='idle');
     const style=getComputedStyle(path);
-    return expected ? active&&style.animationName==='gw-current-flow' :
-      !active&&style.animationName==='none'&&style.transform==='none';
+    const crest=document.querySelector('.gw-glass-ribbon-workspace .gw-current-crest');
+    const traveling=crest.getAnimations().some(a=>a.animationName==='gw-current-travel'&&a.playState!=='idle');
+    return expected ? active&&traveling&&style.animationName==='gw-current-flow' :
+      !active&&!traveling&&getComputedStyle(crest).display==='none'&&style.animationName==='none'&&style.transform==='none';
    },{selector:currentSelector,expected},{timeout:5000});
    await reduce.check();
    await page.locator('.pm-app[data-gw-motion="reduced"]').waitFor();
